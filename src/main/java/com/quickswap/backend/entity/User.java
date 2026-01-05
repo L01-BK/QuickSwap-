@@ -41,6 +41,7 @@ public class User implements UserDetails { // Implement UserDetails để tích 
     private String address;
     private Double ratingAverage; // 4.5
     private Long ratingCount;
+    private String deviceToken;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

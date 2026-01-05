@@ -71,6 +71,12 @@ public class UserService {
         return toUserResponse(saved);
     }
 
+    public void saveDeviceToken(String email, String deviceToken) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setDeviceToken(deviceToken);
+        userRepository.save(user);
+    }
+
     public com.quickswap.backend.dto.UserResponse getMyProfile(String email) {
         User user = userRepository.findByEmail(email).orElseThrow();
         return toUserResponse(user);
@@ -90,5 +96,9 @@ public class UserService {
                 .address(user.getAddress())
                 .rating(user.getRatingAverage())
                 .build();
+    }
+
+    public String getDeviceTokenByUserId(Long userId) {
+        return userRepository.findById(userId).map(User::getDeviceToken).orElse(null);
     }
 }
