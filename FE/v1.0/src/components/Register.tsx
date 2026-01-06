@@ -15,12 +15,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Register Component ---
 
-interface RegisterProps {
-    onRegister: () => void;
-    onLogin: () => void;
-}
+import { useDispatch } from 'react-redux';
+import { navigateTo, setOtpContext } from '../store/reducer/navigationSlice';
 
-export default function Register({ onRegister, onLogin }: RegisterProps) {
+// --- Register Component ---
+
+
+export default function Register() {
+    const dispatch = useDispatch();
+
+    const onRegister = () => {
+        dispatch(setOtpContext('register'));
+        dispatch(navigateTo('otp'));
+    };
+    const onLogin = () => dispatch(navigateTo('login'));
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

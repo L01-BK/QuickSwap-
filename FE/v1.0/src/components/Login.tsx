@@ -4,13 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 
-interface LoginProps {
-    onLogin: () => void;
-    onRegister: () => void;
-    onForgotPassword?: () => void;
-}
+import { useDispatch } from 'react-redux';
+import { navigateTo } from '../store/reducer/navigationSlice';
 
-export default function Login({ onLogin, onRegister, onForgotPassword }: LoginProps) {
+
+export default function Login() {
+    const dispatch = useDispatch();
+
+    const onLogin = () => dispatch(navigateTo('home'));
+    const onRegister = () => dispatch(navigateTo('register'));
+    const onForgotPassword = () => dispatch(navigateTo('forgot-password'));
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [emailError, setEmailError] = useState('');

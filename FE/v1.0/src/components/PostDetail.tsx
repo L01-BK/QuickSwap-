@@ -13,6 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
    Types
 ======================= */
 
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { navigateTo } from '../store/reducer/navigationSlice';
+
+/* =======================
+   Types
+======================= */
+
 export interface Post {
     id: string | number;
     user: string;
@@ -23,16 +31,14 @@ export interface Post {
     info?: string[];
 }
 
-interface PostDetailProps {
-    post: Post | null;
-    onBack: () => void;
-}
-
 /* =======================
    Component
 ======================= */
 
-export default function PostDetail({ post, onBack }: PostDetailProps) {
+export default function PostDetail() {
+    const dispatch = useDispatch();
+    const post = useSelector((state: RootState) => state.navigation.selectedPost);
+    const onBack = () => dispatch(navigateTo('home'));
     // Guard: tránh crash khi chưa có post
     if (!post) {
         return null;

@@ -15,12 +15,18 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface ForgotPasswordProps {
-    onNext: () => void;
-    onCancel: () => void;
-}
+import { useDispatch } from 'react-redux';
+import { navigateTo, setOtpContext } from '../store/reducer/navigationSlice';
 
-export default function ForgotPassword({ onNext, onCancel }: ForgotPasswordProps) {
+
+export default function ForgotPassword() {
+    const dispatch = useDispatch();
+
+    const onNext = () => {
+        dispatch(setOtpContext('forgot-password'));
+        dispatch(navigateTo('otp'));
+    };
+    const onCancel = () => dispatch(navigateTo('login'));
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
 

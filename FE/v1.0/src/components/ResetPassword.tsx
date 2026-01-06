@@ -3,12 +3,15 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-interface ResetPasswordProps {
-    onFinish: () => void;
-    onCancel: () => void;
-}
+import { useDispatch } from 'react-redux';
+import { navigateTo } from '../store/reducer/navigationSlice';
 
-export default function ResetPassword({ onFinish, onCancel }: ResetPasswordProps) {
+
+export default function ResetPassword() {
+    const dispatch = useDispatch();
+
+    const onFinish = () => dispatch(navigateTo('login'));
+    const onCancel = () => dispatch(navigateTo('login'));
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');

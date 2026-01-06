@@ -1,0 +1,38 @@
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+interface UserState {
+    name: string;
+    username: string;
+    handle: string;
+    email: string;
+    phone: string;
+    avatarUrl: string;
+    university: string;
+    address: string;
+    rating: number;
+}
+
+const initialState: UserState = {
+    name: 'Kevin Nguyễn',
+    username: 'Nguyễn Văn Kevin',
+    handle: '@hoclTcungnhau',
+    email: 'kv@hcmut.edu.vn',
+    phone: '0869611401',
+    avatarUrl: 'https://i.pravatar.cc/300',
+    university: 'ĐH Bách Khoa TP.HCM',
+    address: 'B12, KP6, Linh Trung, Thủ Đức, TP.HCM',
+    rating: 4.5,
+};
+
+const userSlice = createSlice({
+    name: 'user',
+    initialState,
+    reducers: {
+        updateUser: (state, action: PayloadAction<Partial<UserState>>) => {
+            return { ...state, ...action.payload };
+        },
+    },
+});
+
+export const { updateUser } = userSlice.actions;
+export default userSlice.reducer;

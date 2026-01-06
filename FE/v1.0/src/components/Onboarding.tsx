@@ -78,13 +78,17 @@ function Paginator({ data, scrollX }: PaginatorProps) {
     );
 }
 
-interface OnboardingProps {
-    onFinish: () => void;
-    onLogin: () => void;
-    onRegister: () => void;
-}
+import { useDispatch } from 'react-redux';
+import { navigateTo } from '../store/reducer/navigationSlice';
 
-export default function Onboarding({ onFinish, onLogin, onRegister }: OnboardingProps) {
+
+export default function Onboarding() {
+    const dispatch = useDispatch();
+
+    const onFinish = () => dispatch(navigateTo('login'));
+    const onLogin = () => dispatch(navigateTo('login'));
+    const onRegister = () => dispatch(navigateTo('register'));
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
     const slidesRef = useRef<FlatList>(null);
