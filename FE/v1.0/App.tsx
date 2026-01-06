@@ -8,7 +8,7 @@ import Register from './src/components/Register';
 import OTP from './src/components/OTP';
 import ForgotPassword from './src/components/ForgotPassword';
 import ResetPassword from './src/components/ResetPassword';
-
+import Notifications from './src/components/Notification';
 import Home from './src/components/Home';
 import PostDetail, { Post } from './src/components/PostDetail';
 
@@ -24,7 +24,8 @@ type Screen =
   | 'forgot-password'
   | 'reset-password'
   | 'home'
-  | 'post-detail';
+  | 'post-detail'
+  |'notifications';
 
 type OtpContext = 'register' | 'forgot-password';
 
@@ -114,7 +115,14 @@ export default function App() {
             onCancel={() => setCurrentScreen('login')}
           />
         );
-
+      
+      /* ---------- Notifications ---------- */
+      case 'notifications':
+        return (
+          <Notifications
+            onBack={() => setCurrentScreen('home')}
+          />
+        );
       /* ---------- Home ---------- */
       case 'home':
         return (
@@ -123,6 +131,7 @@ export default function App() {
               setSelectedPost(post);
               setCurrentScreen('post-detail');
             }}
+            onNotificationClick={() => setCurrentScreen('notifications')}
           />
         );
 

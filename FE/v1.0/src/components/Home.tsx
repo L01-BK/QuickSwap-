@@ -10,49 +10,102 @@ import Profile from './Profile';
 
 interface HomeProps {
     onPostClick: (post: any) => void;
+    onNotificationClick: () => void;
 }
 
-export default function Home({ onPostClick }: HomeProps) {
+export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const userName = "Kevin Nguyễn";
     const [activeTab, setActiveTab] = useState<'home' | 'grid' | 'add' | 'bookmark' | 'profile'>('home');
 
+    const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
     // Dummy data for posts
-    const posts = [
-        {
-            id: '1',
-            user: 'Nguyễn Văn A',
-            title: 'Sách giáo trình môn triết học',
-            time: 'Đăng 14h trước',
-            content: 'Sách còn rất mới, rất hay...',
-            tags: ['Trao đổi', 'Miễn phí'],
-            info: [
-                'Danh mục: Sách',
-                'Tình trạng: Như mới',
-            ]
-        },
-        {
-            id: 2,
-            user: 'Trần Thị B',
-            title: 'Tai nghe Bluetooth',
-            time: 'Đăng 2 ngày trước',
-            tags: ['Cho mượn'],
-            content: 'Tai nghe còn rất mới, pin tốt...',
-            info: [
-                'Danh mục: Phụ kiện',
-                'Tình trạng: Như mới',
-            ]
-        }
-        // Add more dummy items if needed for scrolling test
-    ];
+    const [allPosts, setAllPosts] = useState([
+    {
+        id: '1',
+        user: 'Nguyễn Văn A',
+        title: 'Sách giáo trình môn triết học',
+        time: 'Đăng 14h trước',
+        content: 'Sách còn rất mới, rất hay...',
+        tags: ['Trao đổi', 'Tài liệu'],
+        info: [
+            'Danh mục: Tài liệu', 
+            'Tình trạng: 99%', 
+            'Tác giả: Bộ GD&ĐT',
+            'Môn học: Triết học Mác-Lênin'
+        ],
+        images: [] as string[]
+    },
+    {
+        id: '2',
+        user: 'Trần Thị B',
+        title: 'Tai nghe Bluetooth cũ',
+        time: 'Đăng 2 ngày trước',
+        tags: ['Cho mượn', 'Dụng cụ'],
+        info: [
+            'Danh mục: Dụng cụ', 
+            'Tình trạng: 85%'
+        ],
+        images: [] as string[]
+    },
+    {
+        id: '3',
+        user: 'Nguyễn Văn A',
+        title: 'Đồ thể dục size XXL',
+        time: 'Đăng 2 ngày trước',
+        tags: ['Cho mượn', 'Đồ mặc'],
+        info: [
+            'Danh mục: Đồ mặc', 
+            'Tình trạng: 85%'
+        ],
+        images: [] as string[]
+    },
+    {
+        id: '4',
+        user: 'Trần Thị B',
+        title: 'Máy tính',
+        time: 'Đăng 2 ngày trước',
+        tags: ['Cho mượn', 'Dụng cụ'],
+        info: [
+            'Danh mục: Dụng cụ', 
+            'Tình trạng: 85%'
+        ],
+        images: [] as string[]
+    }
+    
+]);
+    const addNewPost = (newPost: any) => {
+        setAllPosts(prev => [newPost, ...prev]);
+        setActiveTab('home');
+    };
 
+    const toggleBookmark = (id: string | number) => {
+        setBookmarkedIds(prev => 
+            prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        );
+    };
+    
     const renderContent = () => {
         switch (activeTab) {
             case 'grid':
-                return <Grid />;
+                return(
+                    <Grid 
+                            onNotificationClick={onNotificationClick} 
+                            allPosts={allPosts} 
+                            onPostClick={onPostClick}
+                        />
+                );
             case 'add':
-                return <AddPost />;
+                return <AddPost onPostSuccess={addNewPost} />;
             case 'bookmark':
-                return <Bookmark />;
+                return (
+                    <Bookmark 
+                        savedPosts={allPosts.filter(p => bookmarkedIds.includes(p.id))}
+                        onPostClick={onPostClick}
+                        onNotificationClick={onNotificationClick}
+                        toggleBookmark={toggleBookmark}
+                        bookmarkedIds={bookmarkedIds}
+                    />
+                );
             case 'profile':
                 return <Profile />;
             case 'home':
@@ -64,7 +117,7 @@ export default function Home({ onPostClick }: HomeProps) {
                             <Text style={styles.logoText}>
                                 Quick<Text style={styles.logoHighlight}>Swap</Text>
                             </Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={onNotificationClick}>
                                 <Ionicons name="notifications" size={24} color="#000" />
                                 <View style={styles.notificationBadge} />
                             </TouchableOpacity>
@@ -93,35 +146,44 @@ export default function Home({ onPostClick }: HomeProps) {
                             <Text style={styles.sectionTitle}>Bài đăng mới</Text>
 
                             {/* Posts List */}
-                            {posts.map((post) => (
+                            {allPosts.map((post) => (
                                 <TouchableOpacity key={post.id} style={styles.postCard} onPress={() => onPostClick(post)}>
-                                    <View style={styles.postHeader}>
-                                        <Text style={styles.postUser}>{post.user}</Text>
-                                    </View>
-
+                                    <View style={styles.postHeader}><Text style={styles.postUser}>{post.user}</Text></View>
                                     <View style={styles.postImageContainer}>
-                                        <Ionicons name="image-outline" size={60} color="#ccc" />
-                                    </View>
-
+        {post.images && post.images.length > 0 ? (
+            <Image 
+                source={{ uri: post.images[0] }} 
+                style={styles.postCardImage}
+                resizeMode="cover"
+            />
+        ) : (
+            <Ionicons name="image-outline" size={60} color="#ccc" />
+        )}
+    </View>
                                     <View style={styles.postContent}>
                                         <Text style={styles.postTitle}>{post.title}</Text>
                                         <Text style={styles.postTime}>{post.time}</Text>
                                         <View style={styles.tagsContainer}>
-                                            {post.tags.map((tag, index) => (
-                                                <View key={index} style={[
-                                                    styles.tag,
-                                                    tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue
-                                                ]}>
+                                            {post.tags.map((tag, idx) => (
+                                                <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
                                                     <Text style={styles.tagText}>{tag}</Text>
                                                 </View>
                                             ))}
                                         </View>
                                     </View>
-
                                     <View style={styles.postFooter}>
-                                        <Ionicons name="chatbubble-outline" size={20} color="#555" style={styles.footerIcon} />
-                                        <Ionicons name="bookmark-outline" size={20} color="#555" style={styles.footerIcon} />
-                                        <Ionicons name="ellipsis-horizontal" size={20} color="#555" style={styles.footerIcon} />
+                                        <TouchableOpacity style={styles.footerIcon}><Ionicons name="chatbubble-outline" size={20} color="#555" /></TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={styles.footerIcon} 
+                                            onPress={() => toggleBookmark(post.id)}
+                                        >
+                                            <Ionicons 
+                                                name={bookmarkedIds.includes(post.id) ? "bookmark" : "bookmark-outline"} 
+                                                size={20} 
+                                                color={bookmarkedIds.includes(post.id) ? "#60A5FA" : "#555"} 
+                                            />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.footerIcon}><Ionicons name="ellipsis-horizontal" size={20} color="#555" /></TouchableOpacity>
                                     </View>
                                 </TouchableOpacity>
                             ))}
@@ -277,7 +339,7 @@ const styles = StyleSheet.create({
     bannerPlaceholder: {
         width: '100%',
         height: 180,
-        backgroundColor: '#FFE4B5', // Mocking the yellowish tone from screenshot
+        backgroundColor: '#FFE4B5',
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
@@ -316,6 +378,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 10,
+        overflow: 'hidden'
+    },
+    postCardImage: {
+        width: '100%',
+        height: '100%',
     },
     postContent: {
         marginBottom: 10,
@@ -415,4 +482,5 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 14,
     }
+    
 });
