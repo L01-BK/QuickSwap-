@@ -1,0 +1,11 @@
+serviceAccountKey.json
+google-services.json
+.env
+*.log
+**/*.log
+node_modules/
+.idea/
+.vscode/
+target/
+build/
+.DS_Store
