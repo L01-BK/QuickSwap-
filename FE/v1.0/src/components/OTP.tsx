@@ -5,13 +5,36 @@ import { Ionicons } from '@expo/vector-icons';
 
 // --- OTP Component ---
 
-interface OTPProps {
-    onVerify: () => void;
-    onResend?: () => void;
-    onBack?: () => void;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { navigateTo } from '../store/reducer/navigationSlice';
 
-export default function OTP({ onVerify, onResend, onBack }: OTPProps) {
+// --- OTP Component ---
+
+
+export default function OTP() {
+    const dispatch = useDispatch();
+    const { otpContext } = useSelector((state: RootState) => state.navigation);
+
+    const onVerify = () => {
+        if (otpContext === 'register') {
+            dispatch(navigateTo('login'));
+        } else {
+            dispatch(navigateTo('reset-password'));
+        }
+    };
+
+    const onResend = () => {
+        console.log("Resend OTP");
+    };
+
+    const onBack = () => {
+        if (otpContext === 'register') {
+            dispatch(navigateTo('register'));
+        } else {
+            dispatch(navigateTo('forgot-password'));
+        }
+    };
     const [otp, setOtp] = useState(['', '', '', '']);
     const [otpError, setOtpError] = useState('');
     const inputs = useRef<TextInput[]>([]);

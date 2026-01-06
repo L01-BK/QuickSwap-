@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
+
+import { Provider } from 'react-redux';
+import { store } from './src/store';
 
 import Onboarding from './src/components/Onboarding';
 import Login from './src/components/Login';
@@ -8,135 +11,68 @@ import Register from './src/components/Register';
 import OTP from './src/components/OTP';
 import ForgotPassword from './src/components/ForgotPassword';
 import ResetPassword from './src/components/ResetPassword';
+import MyAccount from './src/components/MyAccount';
 
 import Home from './src/components/Home';
 import PostDetail, { Post } from './src/components/PostDetail';
+import Profile from './src/components/Profile';
 
-/* =======================
-   Types
-======================= */
-
-type Screen =
-  | 'onboarding'
-  | 'login'
-  | 'register'
-  | 'otp'
-  | 'forgot-password'
-  | 'reset-password'
-  | 'home'
-  | 'post-detail';
-
-type OtpContext = 'register' | 'forgot-password';
 
 /* =======================
    App
 ======================= */
 
-export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('onboarding');
-  const [otpContext, setOtpContext] = useState<OtpContext>('register');
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+import { useSelector } from 'react-redux';
+import { RootState } from './src/store';
+
+/* =======================
+  MainContent
+======================= */
+
+function MainContent() {
+  const { currentScreen, otpContext, selectedPost, homeActiveTab } = useSelector((state: RootState) => state.navigation);
 
   const renderScreen = () => {
     switch (currentScreen) {
 
       /* ---------- Onboarding ---------- */
       case 'onboarding':
-        return (
-          <Onboarding
-            onFinish={() => setCurrentScreen('login')}
-            onLogin={() => setCurrentScreen('login')}
-            onRegister={() => setCurrentScreen('register')}
-          />
-        );
+        return <Onboarding />;
 
       /* ---------- Login ---------- */
       case 'login':
-        return (
-          <Login
-            onLogin={() => setCurrentScreen('home')}
-            onRegister={() => setCurrentScreen('register')}
-            onForgotPassword={() => setCurrentScreen('forgot-password')}
-          />
-        );
+        return <Login />;
 
       /* ---------- Register ---------- */
       case 'register':
-        return (
-          <Register
-            onRegister={() => {
-              setOtpContext('register');
-              setCurrentScreen('otp');
-            }}
-            onLogin={() => setCurrentScreen('login')}
-          />
-        );
+        return <Register />;
 
       /* ---------- Forgot Password ---------- */
       case 'forgot-password':
-        return (
-          <ForgotPassword
-            onNext={() => {
-              setOtpContext('forgot-password');
-              setCurrentScreen('otp');
-            }}
-            onCancel={() => setCurrentScreen('login')}
-          />
-        );
+        return <ForgotPassword />;
 
       /* ---------- OTP ---------- */
       case 'otp':
-        return (
-          <OTP
-            onVerify={() => {
-              if (otpContext === 'forgot-password') {
-                setCurrentScreen('reset-password');
-              } else {
-                setCurrentScreen('login');
-              }
-            }}
-            onResend={() => console.log('Resend OTP')}
-            onBack={() => {
-              if (otpContext === 'forgot-password') {
-                setCurrentScreen('forgot-password');
-              } else {
-                setCurrentScreen('register');
-              }
-            }}
-          />
-        );
+        return <OTP />;
 
       /* ---------- Reset Password ---------- */
       case 'reset-password':
-        return (
-          <ResetPassword
-            onFinish={() => setCurrentScreen('login')}
-            onCancel={() => setCurrentScreen('login')}
-          />
-        );
+        return <ResetPassword />;
 
       /* ---------- Home ---------- */
       case 'home':
-        return (
-          <Home
-            onPostClick={(post) => {
-              setSelectedPost(post);
-              setCurrentScreen('post-detail');
-            }}
-          />
-        );
+        return <Home />;
 
       /* ---------- Post Detail ---------- */
       case 'post-detail':
-        return (
-          <PostDetail
-            post={selectedPost}
-            onBack={() => {
-              setCurrentScreen('home');
-              setSelectedPost(null);
-            }}
-          />
-        );
+        return <PostDetail />;
+
+      /* ---------- My Account ---------- */
+      case 'my-account':
+        return <MyAccount />;
+
+      case 'profile':
+        return <Profile />;
 
       default:
         return null;
@@ -152,12 +88,24 @@ export default function App() {
 }
 
 /* =======================
+   App
+======================= */
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <MainContent />
+    </Provider>
+  );
+}
+
+/* =======================
    Styles
 ======================= */
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // Root background will be controlled by components now or global theme listener
   },
 });

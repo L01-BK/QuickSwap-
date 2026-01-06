@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { navigateTo, selectPost, setHomeActiveTab } from '../store/reducer/navigationSlice';
 
 import Grid from './Grid';
 import AddPost from './AddPost';
 import Bookmark from './Bookmark';
 import Profile from './Profile';
 
-interface HomeProps {
-    onPostClick: (post: any) => void;
-}
+export default function Home() {
+    const dispatch = useDispatch();
+    const isNightMode = useSelector((state: RootState) => state.theme.isNightMode);
+    const user = useSelector((state: RootState) => state.user);
+    const { homeActiveTab } = useSelector((state: RootState) => state.navigation);
+    const userName = user.name;
 
-export default function Home({ onPostClick }: HomeProps) {
-    const userName = "Kevin Nguyễn";
-    const [activeTab, setActiveTab] = useState<'home' | 'grid' | 'add' | 'bookmark' | 'profile'>('home');
+    // We use homeActiveTab from Redux instead of local state
+    const activeTab = homeActiveTab;
+    const setActiveTab = (tab: any) => dispatch(setHomeActiveTab(tab));
 
     // Dummy data for posts
     const posts = [
@@ -45,6 +51,14 @@ export default function Home({ onPostClick }: HomeProps) {
         // Add more dummy items if needed for scrolling test
     ];
 
+
+    const containerBg = isNightMode ? '#121212' : '#fff';
+    const textColor = isNightMode ? '#fff' : '#000';
+    const subTextColor = isNightMode ? '#aaa' : '#333';
+    const cardBg = isNightMode ? '#1E1E1E' : '#fff';
+    const postTitleColor = isNightMode ? '#E0E0E0' : '#333';
+
+
     const renderContent = () => {
         switch (activeTab) {
             case 'grid':
@@ -61,11 +75,11 @@ export default function Home({ onPostClick }: HomeProps) {
                     <View style={{ flex: 1 }}>
                         {/* Header */}
                         <View style={styles.header}>
-                            <Text style={styles.logoText}>
+                            <Text style={[styles.logoText, { color: textColor }]}>
                                 Quick<Text style={styles.logoHighlight}>Swap</Text>
                             </Text>
                             <TouchableOpacity>
-                                <Ionicons name="notifications" size={24} color="#000" />
+                                <Ionicons name="notifications" size={24} color={textColor} />
                                 <View style={styles.notificationBadge} />
                             </TouchableOpacity>
                         </View>
@@ -73,8 +87,8 @@ export default function Home({ onPostClick }: HomeProps) {
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                             {/* Greeting */}
                             <View style={styles.greetingContainer}>
-                                <Text style={styles.greetingText}>Chào mừng quay trở lại,</Text>
-                                <Text style={styles.userNameText}>{userName}.</Text>
+                                <Text style={[styles.greetingText, { color: subTextColor }]}>Chào mừng quay trở lại,</Text>
+                                <Text style={[styles.userNameText, { color: isNightMode ? '#90CAF9' : '#3B4161' }]}>{userName}.</Text>
                             </View>
 
                             {/* Banner Image */}
@@ -90,21 +104,24 @@ export default function Home({ onPostClick }: HomeProps) {
                             </View>
 
                             {/* Section Title */}
-                            <Text style={styles.sectionTitle}>Bài đăng mới</Text>
+                            <Text style={[styles.sectionTitle, { color: textColor }]}>Bài đăng mới</Text>
 
                             {/* Posts List */}
                             {posts.map((post) => (
-                                <TouchableOpacity key={post.id} style={styles.postCard} onPress={() => onPostClick(post)}>
+                                <TouchableOpacity key={post.id} style={[styles.postCard, { backgroundColor: cardBg, borderColor: isNightMode ? '#333' : '#E0E0E0' }]} onPress={() => {
+                                    dispatch(selectPost(post as any));
+                                    dispatch(navigateTo('post-detail'));
+                                }}>
                                     <View style={styles.postHeader}>
-                                        <Text style={styles.postUser}>{post.user}</Text>
+                                        <Text style={[styles.postUser, { color: isNightMode ? '#fff' : '#333' }]}>{post.user}</Text>
                                     </View>
 
-                                    <View style={styles.postImageContainer}>
+                                    <View style={[styles.postImageContainer, { backgroundColor: isNightMode ? '#2C2C2C' : '#F3F4F6' }]}>
                                         <Ionicons name="image-outline" size={60} color="#ccc" />
                                     </View>
 
                                     <View style={styles.postContent}>
-                                        <Text style={styles.postTitle}>{post.title}</Text>
+                                        <Text style={[styles.postTitle, { color: postTitleColor }]}>{post.title}</Text>
                                         <Text style={styles.postTime}>{post.time}</Text>
                                         <View style={styles.tagsContainer}>
                                             {post.tags.map((tag, index) => (
@@ -118,10 +135,10 @@ export default function Home({ onPostClick }: HomeProps) {
                                         </View>
                                     </View>
 
-                                    <View style={styles.postFooter}>
-                                        <Ionicons name="chatbubble-outline" size={20} color="#555" style={styles.footerIcon} />
-                                        <Ionicons name="bookmark-outline" size={20} color="#555" style={styles.footerIcon} />
-                                        <Ionicons name="ellipsis-horizontal" size={20} color="#555" style={styles.footerIcon} />
+                                    <View style={[styles.postFooter, { borderTopColor: isNightMode ? '#333' : '#F3F4F6' }]}>
+                                        <Ionicons name="chatbubble-outline" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
+                                        <Ionicons name="bookmark-outline" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
+                                        <Ionicons name="ellipsis-horizontal" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
                                     </View>
                                 </TouchableOpacity>
                             ))}
@@ -134,14 +151,19 @@ export default function Home({ onPostClick }: HomeProps) {
         }
     };
 
+    // Explicit return for TS
+    const handleTabChange = (tab: 'home' | 'grid' | 'add' | 'bookmark' | 'profile') => {
+        dispatch(setHomeActiveTab(tab));
+    };
+
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top']}>
             {renderContent()}
 
 
             {/* Bottom Tab Bar */}
             <View style={styles.bottomTabContainer}>
-                <View style={styles.bottomTab}>
+                <View style={[styles.bottomTab, isNightMode && { backgroundColor: '#1E1E1E', borderTopColor: '#333', borderTopWidth: 1 }]}>
 
                     {/* Home */}
                     <TouchableOpacity
@@ -149,12 +171,12 @@ export default function Home({ onPostClick }: HomeProps) {
                             styles.tabItem,
                             activeTab === 'home' && styles.activeTab
                         ]}
-                        onPress={() => setActiveTab('home')}
+                        onPress={() => handleTabChange('home')}
                     >
                         <Ionicons
                             name="home-outline"
                             size={22}
-                            color="#fff"
+                            color={isNightMode ? "#fff" : "#fff"}
                         />
                         {activeTab === 'home' && (
                             <Text style={styles.activeText}>Trang chủ</Text>
@@ -167,9 +189,9 @@ export default function Home({ onPostClick }: HomeProps) {
                             styles.tabItem,
                             activeTab === 'grid' && styles.activeTab
                         ]}
-                        onPress={() => setActiveTab('grid')}
+                        onPress={() => handleTabChange('grid')}
                     >
-                        <Ionicons name="grid-outline" size={22} color="#fff" />
+                        <Ionicons name="grid-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
                         {activeTab === 'grid' && (
                             <Text style={styles.activeText}>Danh mục</Text>
                         )}
@@ -181,9 +203,9 @@ export default function Home({ onPostClick }: HomeProps) {
                             styles.tabItem,
                             activeTab === 'add' && styles.activeTab
                         ]}
-                        onPress={() => setActiveTab('add')}
+                        onPress={() => handleTabChange('add')}
                     >
-                        <Ionicons name="add-circle-outline" size={22} color="#fff" />
+                        <Ionicons name="add-circle-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
                         {activeTab === 'add' && (
                             <Text style={styles.activeText}>Đăng bài</Text>
                         )}
@@ -195,9 +217,9 @@ export default function Home({ onPostClick }: HomeProps) {
                             styles.tabItem,
                             activeTab === 'bookmark' && styles.activeTab
                         ]}
-                        onPress={() => setActiveTab('bookmark')}
+                        onPress={() => handleTabChange('bookmark')}
                     >
-                        <Ionicons name="bookmark-outline" size={22} color="#fff" />
+                        <Ionicons name="bookmark-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
                         {activeTab === 'bookmark' && (
                             <Text style={styles.activeText}>Đã lưu</Text>
                         )}
@@ -209,9 +231,9 @@ export default function Home({ onPostClick }: HomeProps) {
                             styles.tabItem,
                             activeTab === 'profile' && styles.activeTab
                         ]}
-                        onPress={() => setActiveTab('profile')}
+                        onPress={() => handleTabChange('profile')}
                     >
-                        <Ionicons name="person-outline" size={22} color="#fff" />
+                        <Ionicons name="person-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
                         {activeTab === 'profile' && (
                             <Text style={styles.activeText}>Cá nhân</Text>
                         )}
