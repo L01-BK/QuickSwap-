@@ -1,169 +1,267 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { navigateTo, selectPost, setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { updateUser } from '../store/reducer/userSlice';
+import { BASE_URL, handleApiError } from '../utils/api';
 
 import Grid from './Grid';
 import AddPost from './AddPost';
 import Bookmark from './Bookmark';
 import Profile from './Profile';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { Post } from '../types';
 
-export default function Home() {
+interface HomeProps {
+    onPostClick: (post: any) => void;
+    onNotificationClick: () => void;
+}
+
+export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const dispatch = useDispatch();
-    const isNightMode = useSelector((state: RootState) => state.theme.isNightMode);
+    const { colors, isNightMode } = useThemeColors();
     const user = useSelector((state: RootState) => state.user);
-    const { homeActiveTab } = useSelector((state: RootState) => state.navigation);
-    const userName = user.name;
+    const [activeTab, setActiveTab] = useState<'home' | 'grid' | 'add' | 'bookmark' | 'profile'>('home');
 
-    // We use homeActiveTab from Redux instead of local state
-    const activeTab = homeActiveTab;
-    const setActiveTab = (tab: any) => dispatch(setHomeActiveTab(tab));
+    const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
 
-    // Dummy data for posts
-    const posts = [
-        {
-            id: '1',
-            user: 'Nguyễn Văn A',
-            title: 'Sách giáo trình môn triết học',
-            time: 'Đăng 14h trước',
-            content: 'Sách còn rất mới, rất hay...',
-            tags: ['Trao đổi', 'Miễn phí'],
-            info: [
-                'Danh mục: Sách',
-                'Tình trạng: Như mới',
-            ]
-        },
-        {
-            id: 2,
-            user: 'Trần Thị B',
-            title: 'Tai nghe Bluetooth',
-            time: 'Đăng 2 ngày trước',
-            tags: ['Cho mượn'],
-            content: 'Tai nghe còn rất mới, pin tốt...',
-            info: [
-                'Danh mục: Phụ kiện',
-                'Tình trạng: Như mới',
-            ]
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (user.token) {
+                try {
+                    const response = await fetch(`${BASE_URL}/api/users/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const data = await handleApiError(response);
+                    dispatch(updateUser(data));
+                } catch (error) {
+                    console.error('Failed to fetch user data:', error);
+                    // Optional: Handle token expiration or error
+                }
+            }
+        };
+
+        fetchUserData();
+    }, [user.token, dispatch]);
+
+    // Posts state
+    const [allPosts, setAllPosts] = useState<Post[]>([]);
+    const [page, setPage] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+
+    const fetchPosts = async (currentPage: number) => {
+        if (!user.token || loading) return;
+        setLoading(true);
+
+        try {
+            const limit = 10;
+            const response = await fetch(`${BASE_URL}/api/posts?page=${currentPage}&limit=${limit}`, {
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+            const data = await handleApiError(response);
+
+            // Spring Page interface returns data in 'content' field
+            const postsList = data.content || [];
+
+            // If fewer items than limit, we reached the end
+            if (postsList.length < limit) {
+                setHasMore(false);
+            }
+
+            const mappedPosts: Post[] = postsList.map((p: any) => ({
+                id: p.id,
+                user: p.user?.name || 'Người dùng ẩn',
+                title: p.title,
+                time: p.time || 'Vừa xong',
+                tags: p.tags || [],
+                content: p.content,
+                info: p.info ? Object.entries(p.info).map(([k, v]) => `${k}: ${v}`) : [],
+                images: p.imageUrls || []
+            }));
+
+            if (currentPage === 0) {
+                setAllPosts(mappedPosts);
+            } else {
+                setAllPosts(prev => [...prev, ...mappedPosts]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch posts:', error);
+        } finally {
+            setLoading(false);
         }
-        // Add more dummy items if needed for scrolling test
-    ];
+    };
 
+    // Initial load
+    useEffect(() => {
+        setPage(0);
+        setHasMore(true);
+        fetchPosts(0);
+    }, [user.token]);
 
-    const containerBg = isNightMode ? '#121212' : '#fff';
-    const textColor = isNightMode ? '#fff' : '#000';
-    const subTextColor = isNightMode ? '#aaa' : '#333';
-    const cardBg = isNightMode ? '#1E1E1E' : '#fff';
-    const postTitleColor = isNightMode ? '#E0E0E0' : '#333';
+    const loadMorePosts = () => {
+        if (!loading && hasMore) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            fetchPosts(nextPage);
+        }
+    };
 
+    const addNewPost = (newPost: any) => {
+        setAllPosts(prev => [newPost, ...prev]);
+        setActiveTab('home');
+    };
+
+    const toggleBookmark = (id: string | number) => {
+        setBookmarkedIds(prev =>
+            prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        );
+    };
+
+    // Render items for FlatList
+    const renderPostItem = ({ item }: { item: Post }) => (
+        <TouchableOpacity
+            style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onPostClick(item)}
+        >
+            <View style={styles.postHeader}><Text style={[styles.postUser, { color: colors.text }]}>{item.user}</Text></View>
+            <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
+                {item.images && item.images.length > 0 ? (
+                    <Image
+                        source={{ uri: item.images[0] }}
+                        style={styles.postCardImage}
+                        resizeMode="cover"
+                    // FlatList handles lazy loading viewability, but we can add loadingIndicatorSource if needed
+                    />
+                ) : (
+                    <Ionicons name="image-outline" size={60} color={colors.subText} />
+                )}
+            </View>
+            <View style={styles.postContent}>
+                <Text style={[styles.postTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.postTime, { color: colors.subText }]}>{item.time}</Text>
+                <View style={styles.tagsContainer}>
+                    {item.tags.map((tag, idx) => (
+                        <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
+                <TouchableOpacity style={styles.footerIcon}><Ionicons name="chatbubble-outline" size={20} color={colors.subText} /></TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.footerIcon}
+                    onPress={() => toggleBookmark(item.id)}
+                >
+                    <Ionicons
+                        name={bookmarkedIds.includes(item.id) ? "bookmark" : "bookmark-outline"}
+                        size={20}
+                        color={bookmarkedIds.includes(item.id) ? "#60A5FA" : colors.subText}
+                    />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerIcon}><Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} /></TouchableOpacity>
+            </View>
+        </TouchableOpacity>
+    );
+
+    const renderHeader = () => (
+        <View>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={[styles.logoText, { color: colors.text }]}>
+                    Quick<Text style={styles.logoHighlight}>Swap</Text>
+                </Text>
+                <TouchableOpacity onPress={onNotificationClick}>
+                    <Ionicons name="notifications" size={24} color={colors.icon} />
+                    <View style={styles.notificationBadge} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Greeting */}
+            <View style={styles.greetingContainer}>
+                <Text style={[styles.greetingText, { color: colors.subText }]}>Chào mừng quay trở lại,</Text>
+                <Text style={[styles.userNameText, { color: colors.text }]}>{user.name || user.username}.</Text>
+            </View>
+
+            {/* Banner Image */}
+            <View style={styles.bannerContainer}>
+                {/* Placeholder for the banner image shown in design */}
+                <View style={styles.bannerPlaceholder}>
+                    <Image
+                        source={{ uri: 'https://via.placeholder.com/350x150' }} // Replace with local asset if available
+                        style={styles.bannerImage}
+                        resizeMode="cover"
+                    />
+                </View>
+            </View>
+
+            {/* Section Title */}
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Bài đăng mới</Text>
+        </View>
+    );
 
     const renderContent = () => {
         switch (activeTab) {
             case 'grid':
-                return <Grid />;
+                return (
+                    <Grid
+                        onNotificationClick={onNotificationClick}
+                        allPosts={allPosts}
+                        onPostClick={onPostClick}
+                    />
+                );
             case 'add':
-                return <AddPost />;
+                return <AddPost onPostSuccess={addNewPost} />;
             case 'bookmark':
-                return <Bookmark />;
+                return (
+                    <Bookmark
+                        savedPosts={allPosts.filter(p => bookmarkedIds.includes(p.id))}
+                        onPostClick={onPostClick}
+                        onNotificationClick={onNotificationClick}
+                        toggleBookmark={toggleBookmark}
+                        bookmarkedIds={bookmarkedIds}
+                    />
+                );
             case 'profile':
                 return <Profile />;
             case 'home':
             default:
                 return (
-                    <View style={{ flex: 1 }}>
-                        {/* Header */}
-                        <View style={styles.header}>
-                            <Text style={[styles.logoText, { color: textColor }]}>
-                                Quick<Text style={styles.logoHighlight}>Swap</Text>
-                            </Text>
-                            <TouchableOpacity>
-                                <Ionicons name="notifications" size={24} color={textColor} />
-                                <View style={styles.notificationBadge} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                            {/* Greeting */}
-                            <View style={styles.greetingContainer}>
-                                <Text style={[styles.greetingText, { color: subTextColor }]}>Chào mừng quay trở lại,</Text>
-                                <Text style={[styles.userNameText, { color: isNightMode ? '#90CAF9' : '#3B4161' }]}>{userName}.</Text>
-                            </View>
-
-                            {/* Banner Image */}
-                            <View style={styles.bannerContainer}>
-                                {/* Placeholder for the banner image shown in design */}
-                                <View style={styles.bannerPlaceholder}>
-                                    <Image
-                                        source={{ uri: 'https://via.placeholder.com/350x150' }} // Replace with local asset if available
-                                        style={styles.bannerImage}
-                                        resizeMode="cover"
-                                    />
+                    <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                        <FlatList
+                            data={allPosts}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={renderPostItem}
+                            ListHeaderComponent={renderHeader}
+                            ListFooterComponent={
+                                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                                    {loading && <ActivityIndicator size="large" color={colors.primary} />}
                                 </View>
-                            </View>
-
-                            {/* Section Title */}
-                            <Text style={[styles.sectionTitle, { color: textColor }]}>Bài đăng mới</Text>
-
-                            {/* Posts List */}
-                            {posts.map((post) => (
-                                <TouchableOpacity key={post.id} style={[styles.postCard, { backgroundColor: cardBg, borderColor: isNightMode ? '#333' : '#E0E0E0' }]} onPress={() => {
-                                    dispatch(selectPost(post as any));
-                                    dispatch(navigateTo('post-detail'));
-                                }}>
-                                    <View style={styles.postHeader}>
-                                        <Text style={[styles.postUser, { color: isNightMode ? '#fff' : '#333' }]}>{post.user}</Text>
-                                    </View>
-
-                                    <View style={[styles.postImageContainer, { backgroundColor: isNightMode ? '#2C2C2C' : '#F3F4F6' }]}>
-                                        <Ionicons name="image-outline" size={60} color="#ccc" />
-                                    </View>
-
-                                    <View style={styles.postContent}>
-                                        <Text style={[styles.postTitle, { color: postTitleColor }]}>{post.title}</Text>
-                                        <Text style={styles.postTime}>{post.time}</Text>
-                                        <View style={styles.tagsContainer}>
-                                            {post.tags.map((tag, index) => (
-                                                <View key={index} style={[
-                                                    styles.tag,
-                                                    tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue
-                                                ]}>
-                                                    <Text style={styles.tagText}>{tag}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
-
-                                    <View style={[styles.postFooter, { borderTopColor: isNightMode ? '#333' : '#F3F4F6' }]}>
-                                        <Ionicons name="chatbubble-outline" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
-                                        <Ionicons name="bookmark-outline" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
-                                        <Ionicons name="ellipsis-horizontal" size={20} color={isNightMode ? '#aaa' : '#555'} style={styles.footerIcon} />
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-
-                            {/* Spacer for Bottom Tab */}
-                            <View style={{ height: 80 }} />
-                        </ScrollView>
+                            }
+                            onEndReached={loadMorePosts}
+                            onEndReachedThreshold={0.5}
+                            showsVerticalScrollIndicator={false}
+                        />
                     </View>
                 );
         }
     };
 
-    // Explicit return for TS
-    const handleTabChange = (tab: 'home' | 'grid' | 'add' | 'bookmark' | 'profile') => {
-        dispatch(setHomeActiveTab(tab));
-    };
-
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             {renderContent()}
 
 
             {/* Bottom Tab Bar */}
             <View style={styles.bottomTabContainer}>
-                <View style={[styles.bottomTab, isNightMode && { backgroundColor: '#1E1E1E', borderTopColor: '#333', borderTopWidth: 1 }]}>
+                <View style={[styles.bottomTab, { backgroundColor: colors.primary }]}>
 
                     {/* Home */}
                     <TouchableOpacity
@@ -171,12 +269,12 @@ export default function Home() {
                             styles.tabItem,
                             activeTab === 'home' && styles.activeTab
                         ]}
-                        onPress={() => handleTabChange('home')}
+                        onPress={() => setActiveTab('home')}
                     >
                         <Ionicons
                             name="home-outline"
                             size={22}
-                            color={isNightMode ? "#fff" : "#fff"}
+                            color="#fff"
                         />
                         {activeTab === 'home' && (
                             <Text style={styles.activeText}>Trang chủ</Text>
@@ -189,9 +287,9 @@ export default function Home() {
                             styles.tabItem,
                             activeTab === 'grid' && styles.activeTab
                         ]}
-                        onPress={() => handleTabChange('grid')}
+                        onPress={() => setActiveTab('grid')}
                     >
-                        <Ionicons name="grid-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
+                        <Ionicons name="grid-outline" size={22} color="#fff" />
                         {activeTab === 'grid' && (
                             <Text style={styles.activeText}>Danh mục</Text>
                         )}
@@ -203,9 +301,9 @@ export default function Home() {
                             styles.tabItem,
                             activeTab === 'add' && styles.activeTab
                         ]}
-                        onPress={() => handleTabChange('add')}
+                        onPress={() => setActiveTab('add')}
                     >
-                        <Ionicons name="add-circle-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
+                        <Ionicons name="add-circle-outline" size={22} color="#fff" />
                         {activeTab === 'add' && (
                             <Text style={styles.activeText}>Đăng bài</Text>
                         )}
@@ -217,9 +315,9 @@ export default function Home() {
                             styles.tabItem,
                             activeTab === 'bookmark' && styles.activeTab
                         ]}
-                        onPress={() => handleTabChange('bookmark')}
+                        onPress={() => setActiveTab('bookmark')}
                     >
-                        <Ionicons name="bookmark-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
+                        <Ionicons name="bookmark-outline" size={22} color="#fff" />
                         {activeTab === 'bookmark' && (
                             <Text style={styles.activeText}>Đã lưu</Text>
                         )}
@@ -231,9 +329,9 @@ export default function Home() {
                             styles.tabItem,
                             activeTab === 'profile' && styles.activeTab
                         ]}
-                        onPress={() => handleTabChange('profile')}
+                        onPress={() => setActiveTab('profile')}
                     >
-                        <Ionicons name="person-outline" size={22} color={isNightMode ? "#fff" : "#fff"} />
+                        <Ionicons name="person-outline" size={22} color="#fff" />
                         {activeTab === 'profile' && (
                             <Text style={styles.activeText}>Cá nhân</Text>
                         )}
@@ -249,7 +347,6 @@ export default function Home() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
     },
     header: {
         flexDirection: 'row',
@@ -261,7 +358,6 @@ const styles = StyleSheet.create({
     logoText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#000',
     },
     logoHighlight: {
         color: '#60A5FA',
@@ -284,12 +380,10 @@ const styles = StyleSheet.create({
     },
     greetingText: {
         fontSize: 16,
-        color: '#333',
     },
     userNameText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#3B4161',
     },
     bannerContainer: {
         marginBottom: 25,
@@ -299,7 +393,7 @@ const styles = StyleSheet.create({
     bannerPlaceholder: {
         width: '100%',
         height: 180,
-        backgroundColor: '#FFE4B5', // Mocking the yellowish tone from screenshot
+        backgroundColor: '#FFE4B5',
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
@@ -311,16 +405,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#000',
         marginBottom: 15,
     },
     postCard: {
         borderWidth: 1,
-        borderColor: '#E0E0E0',
         borderRadius: 12,
         padding: 15,
         marginBottom: 20,
-        backgroundColor: '#fff',
     },
     postHeader: {
         marginBottom: 10,
@@ -328,16 +419,19 @@ const styles = StyleSheet.create({
     postUser: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#333',
     },
     postImageContainer: {
         width: '100%',
         height: 200,
-        backgroundColor: '#F3F4F6',
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 10,
+        overflow: 'hidden'
+    },
+    postCardImage: {
+        width: '100%',
+        height: '100%',
     },
     postContent: {
         marginBottom: 10,
@@ -345,12 +439,10 @@ const styles = StyleSheet.create({
     postTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
         marginBottom: 5,
     },
     postTime: {
         fontSize: 12,
-        color: '#888',
         marginBottom: 10,
     },
     tagsContainer: {
@@ -378,7 +470,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
     },
     footerIcon: {
         padding: 5,
@@ -394,7 +485,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#60A5FA',
         height: 60,
         paddingHorizontal: 10,
         paddingBottom: 12,
@@ -437,4 +527,5 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 14,
     }
+
 });

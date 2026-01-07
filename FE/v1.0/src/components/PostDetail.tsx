@@ -1,60 +1,88 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
+    Alert,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-/* =======================
-   Types
-======================= */
-
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { navigateTo } from '../store/reducer/navigationSlice';
-
-/* =======================
-   Types
-======================= */
-
-export interface Post {
-    id: string | number;
-    user: string;
-    title: string;
-    time: string;
-    tags: string[];
-    content?: string;
-    info?: string[];
-}
-
-/* =======================
-   Component
-======================= */
+import { useThemeColors } from '../hooks/useThemeColors';
+import { BASE_URL, handleApiError } from '../utils/api';
+import { Post } from '../types';
 
 export default function PostDetail() {
     const dispatch = useDispatch();
-    const post = useSelector((state: RootState) => state.navigation.selectedPost);
+    const initialPost = useSelector((state: RootState) => state.navigation.selectedPost);
+    const user = useSelector((state: RootState) => state.user);
     const onBack = () => dispatch(navigateTo('home'));
+
+    // Theme
+    const { colors } = useThemeColors();
+
+    const [post, setPost] = useState<Post | null>(initialPost);
+
     // Guard: tránh crash khi chưa có post
-    if (!post) {
+    if (!initialPost) {
         return null;
     }
 
+    useEffect(() => {
+        const fetchPostDetail = async () => {
+            if (initialPost?.id) {
+                try {
+                    const response = await fetch(`${BASE_URL}/api/posts/${initialPost.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const data = await handleApiError(response);
+
+                    // Map API response (PostResponse) to Frontend Post type
+                    // Backend: user is object (UserResponse), info is Map
+                    // Frontend: user is string, info is Array
+                    const mappedPost: Post = {
+                        id: data.id,
+                        user: data.user?.name || 'Người dùng ẩn',
+                        title: data.title,
+                        time: data.time || 'Vừa xong',
+                        tags: data.tags || [],
+                        content: data.content,
+                        info: data.info ? Object.entries(data.info).map(([k, v]) => `${k}: ${v}`) : [],
+                        images: data.imageUrls || []
+                    };
+
+                    setPost(mappedPost);
+                } catch (error) {
+                    console.error('Failed to fetch post details:', error);
+                    // Optional: Alert or fallback
+                }
+            }
+        };
+
+        fetchPostDetail();
+    }, [initialPost?.id, user.token]);
+
+    // Use 'post' state for rendering, which starts as 'initialPost' and updates with API data
+    const displayPost = post || initialPost;
+
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
 
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color="#000" />
+                    <Ionicons name="chevron-back" size={28} color={colors.text} />
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>
-                    Bài viết của {post.user}
+                <Text style={[styles.headerTitle, { color: colors.subText }]}>
+                    Bài viết của {displayPost.user}
                 </Text>
 
                 <View style={{ width: 28 }} />
@@ -64,32 +92,49 @@ export default function PostDetail() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                <View style={styles.card}>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
                     {/* User */}
-                    <View style={styles.userSection}>
-                        <Text style={styles.userName}>{post.user}</Text>
+                    <View style={[styles.userSection, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.userName, { color: colors.text }]}>{displayPost.user}</Text>
                     </View>
 
-                    {/* Image placeholder */}
-                    <View style={styles.imagePlaceholder}>
-                        <Ionicons name="image-outline" size={80} color="#ccc" />
+                    {/* Image */}
+                    <View style={[styles.imagePlaceholder, { backgroundColor: colors.iconBg }]}>
+                        {displayPost.images && displayPost.images.length > 0 ? (
+                            <Image
+                                source={{ uri: displayPost.images[0] }}
+                                style={styles.postImage}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <Ionicons name="image-outline" size={80} color={colors.subText} />
+                        )}
                     </View>
 
-                    {/* Pagination dots */}
-                    <View style={styles.paginationDots}>
-                        <View style={[styles.dot, styles.dotActive]} />
-                        <View style={styles.dot} />
-                    </View>
+                    {/* Pagination dots (only if multiple images) */}
+                    {displayPost.images && displayPost.images.length > 1 && (
+                        <View style={[styles.paginationDots, { backgroundColor: colors.iconBg }]}>
+                            {displayPost.images.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.dot,
+                                        index === 0 ? styles.dotActive : { backgroundColor: colors.border }
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    )}
 
                     {/* Details */}
                     <View style={styles.detailsContainer}>
-                        <Text style={styles.title}>{post.title}</Text>
-                        <Text style={styles.time}>{post.time}</Text>
+                        <Text style={[styles.title, { color: colors.text }]}>{displayPost.title}</Text>
+                        <Text style={[styles.time, { color: colors.subText }]}>{displayPost.time}</Text>
 
                         {/* Tags */}
                         <View style={styles.tagsContainer}>
-                            {post.tags.map((tag, index) => (
+                            {displayPost.tags.map((tag: string, index: number) => (
                                 <View
                                     key={index}
                                     style={[
@@ -105,27 +150,27 @@ export default function PostDetail() {
                         </View>
 
                         {/* Content */}
-                        {post.content && (
+                        {displayPost.content && (
                             <>
-                                <Text style={styles.sectionHeader}>
+                                <Text style={[styles.sectionHeader, { color: colors.text }]}>
                                     Nội dung bài đăng
                                 </Text>
-                                <Text style={styles.description}>
-                                    {post.content}
+                                <Text style={[styles.description, { color: colors.subText }]}>
+                                    {displayPost.content}
                                 </Text>
                             </>
                         )}
 
                         {/* Extra info */}
-                        {post.info && post.info.length > 0 && (
+                        {displayPost.info && displayPost.info.length > 0 && (
                             <>
-                                <Text style={styles.sectionHeader}>
+                                <Text style={[styles.sectionHeader, { color: colors.text }]}>
                                     Thông tin thêm
                                 </Text>
-                                {post.info.map((line, index) => (
+                                {displayPost.info.map((line: string, index: number) => (
                                     <Text
                                         key={index}
-                                        style={styles.infoLine}
+                                        style={[styles.infoLine, { color: colors.subText }]}
                                     >
                                         {line}
                                     </Text>
@@ -137,12 +182,12 @@ export default function PostDetail() {
             </ScrollView>
 
             {/* Bottom Action Bar */}
-            <View style={styles.bottomBar}>
+            <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
                 <TouchableOpacity style={styles.iconButton}>
                     <Ionicons
                         name="chatbubble-outline"
                         size={24}
-                        color="#000"
+                        color={colors.text}
                     />
                 </TouchableOpacity>
 
@@ -150,7 +195,7 @@ export default function PostDetail() {
                     <Ionicons
                         name="bookmark-outline"
                         size={24}
-                        color="#000"
+                        color={colors.text}
                     />
                 </TouchableOpacity>
 
@@ -158,7 +203,7 @@ export default function PostDetail() {
                     <Ionicons
                         name="ellipsis-horizontal"
                         size={24}
-                        color="#000"
+                        color={colors.text}
                     />
                 </TouchableOpacity>
             </View>
@@ -166,14 +211,9 @@ export default function PostDetail() {
     );
 }
 
-/* =======================
-   Styles
-======================= */
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
     },
     header: {
         flexDirection: 'row',
@@ -187,7 +227,6 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 16,
-        color: '#555',
         fontWeight: '500',
     },
     scrollContent: {
@@ -195,16 +234,13 @@ const styles = StyleSheet.create({
     },
     card: {
         borderWidth: 1,
-        borderColor: '#E0E0E0',
         borderRadius: 12,
-        backgroundColor: '#fff',
         overflow: 'hidden',
         marginBottom: 20,
     },
     userSection: {
         padding: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
     },
     userName: {
         fontWeight: 'bold',
@@ -213,20 +249,21 @@ const styles = StyleSheet.create({
     imagePlaceholder: {
         width: '100%',
         height: 300,
-        backgroundColor: '#F9FAFB',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    postImage: {
+        width: '100%',
+        height: '100%',
     },
     paginationDots: {
         flexDirection: 'row',
         justifyContent: 'center',
         paddingVertical: 10,
-        backgroundColor: '#F9FAFB',
     },
     dot: {
         width: 30,
         height: 4,
-        backgroundColor: '#E5E7EB',
         marginHorizontal: 2,
         borderRadius: 2,
     },
@@ -240,11 +277,9 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 5,
-        color: '#000',
     },
     time: {
         fontSize: 14,
-        color: '#888',
         marginBottom: 10,
     },
     tagsContainer: {
@@ -272,26 +307,21 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 5,
-        color: '#333',
     },
     description: {
         fontSize: 14,
-        color: '#666',
         lineHeight: 20,
         marginBottom: 20,
     },
     infoLine: {
         fontSize: 14,
-        color: '#666',
         lineHeight: 22,
     },
     bottomBar: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         borderTopWidth: 1,
-        borderTopColor: '#E0E0E0',
         paddingVertical: 10,
-        backgroundColor: '#fff',
     },
     iconButton: {
         padding: 10,

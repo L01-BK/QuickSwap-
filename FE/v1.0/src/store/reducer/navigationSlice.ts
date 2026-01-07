@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Post } from '../../components/PostDetail';
+import { Post } from '../../types';
 
 export type Screen =
     | 'onboarding'
@@ -11,7 +11,8 @@ export type Screen =
     | 'home'
     | 'post-detail'
     | 'my-account'
-    | 'profile';
+    | 'profile'
+    | 'notification';
 
 export type OtpContext = 'register' | 'forgot-password';
 export type MainTab = 'home' | 'grid' | 'add' | 'bookmark' | 'profile';
