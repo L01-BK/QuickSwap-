@@ -10,6 +10,7 @@ interface UserState {
     university: string;
     address: string;
     rating: number;
+    token?: string; // Add token field
 }
 
 const initialState: UserState = {
@@ -22,6 +23,7 @@ const initialState: UserState = {
     university: 'ĐH Bách Khoa TP.HCM',
     address: 'B12, KP6, Linh Trung, Thủ Đức, TP.HCM',
     rating: 4.5,
+    token: undefined,
 };
 
 const userSlice = createSlice({

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 
 import { useDispatch } from 'react-redux';
 import { navigateTo } from '../store/reducer/navigationSlice';
+import { updateUser } from '../store/reducer/userSlice';
+import { BASE_URL, handleApiError } from '../utils/api';
 
 
 export default function Login() {
@@ -25,7 +27,7 @@ export default function Login() {
     const title = "ĐĂNG NHẬP";
     const subtitle = "Chào mừng quay trở lại! Hãy đăng nhập để tiếp tục.";
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         let isValid = true;
 
@@ -47,7 +49,31 @@ export default function Login() {
         }
 
         if (isValid) {
-            onLogin();
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                    }),
+                });
+
+                const data = await handleApiError(response);
+
+                if (data.token && data.user) {
+                    dispatch(updateUser({ ...data.user, token: data.token }));
+                    dispatch(navigateTo('home'));
+                } else {
+                    Alert.alert("Đăng nhập thất bại", "Phản hồi không hợp lệ từ máy chủ");
+                }
+
+            } catch (error: any) {
+                console.log('Login Error:', error);
+                Alert.alert("Đăng nhập thất bại", "Tài khoản hoặc mật khẩu không chính xác");
+            }
         }
     };
 

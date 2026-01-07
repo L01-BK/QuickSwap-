@@ -2,7 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import { store } from './src/store';
 
 import Onboarding from './src/components/Onboarding';
@@ -14,8 +14,10 @@ import ResetPassword from './src/components/ResetPassword';
 import MyAccount from './src/components/MyAccount';
 
 import Home from './src/components/Home';
-import PostDetail, { Post } from './src/components/PostDetail';
+import PostDetail from './src/components/PostDetail';
+import { Post } from './src/types';
 import Profile from './src/components/Profile';
+import Notification from './src/components/Notification';
 
 
 /* =======================
@@ -24,13 +26,24 @@ import Profile from './src/components/Profile';
 
 import { useSelector } from 'react-redux';
 import { RootState } from './src/store';
+import { navigateTo, selectPost } from './src/store/reducer/navigationSlice';
 
 /* =======================
   MainContent
 ======================= */
 
 function MainContent() {
+  const dispatch = useDispatch();
   const { currentScreen, otpContext, selectedPost, homeActiveTab } = useSelector((state: RootState) => state.navigation);
+
+  const handlePostClick = (post: any) => {
+    dispatch(selectPost(post));
+    dispatch(navigateTo('post-detail'));
+  };
+
+  const handleNotificationClick = () => {
+    dispatch(navigateTo('notification'));
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -61,7 +74,12 @@ function MainContent() {
 
       /* ---------- Home ---------- */
       case 'home':
-        return <Home />;
+        return (
+          <Home
+            onPostClick={handlePostClick}
+            onNotificationClick={handleNotificationClick}
+          />
+        );
 
       /* ---------- Post Detail ---------- */
       case 'post-detail':
@@ -73,6 +91,9 @@ function MainContent() {
 
       case 'profile':
         return <Profile />;
+
+      case 'notification':
+        return <Notification onBack={() => dispatch(navigateTo('home'))} />;
 
       default:
         return null;

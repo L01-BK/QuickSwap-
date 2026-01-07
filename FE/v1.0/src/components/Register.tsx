@@ -17,6 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDispatch } from 'react-redux';
 import { navigateTo, setOtpContext } from '../store/reducer/navigationSlice';
+import { updateUser } from '../store/reducer/userSlice';
+import { BASE_URL, handleApiError } from '../utils/api';
+import { Alert } from 'react-native';
 
 // --- Register Component ---
 
@@ -43,9 +46,11 @@ export default function Register() {
     const title = "ĐĂNG KÝ";
     const subtitle = "Có vẻ như bạn chưa có tài khoản. Hãy tạo một tài khoản mới cho bạn nhé!";
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         let isValid = true;
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // Simplified password regex for testing purposes, or match backend if known. 
+        // Keeping original regex: At least 1 uppercase, 1 number.
         const passwordRegex = /^(?=.*[A-Z])(?=.*\d).+$/;
 
         if (!name) {
@@ -68,6 +73,9 @@ export default function Register() {
         if (!password) {
             setPasswordError('Vui lòng nhập mật khẩu');
             isValid = false;
+        } else if (password.length < 8) {
+            setPasswordError('Mật khẩu phải chứa ít nhất 8 ký tự');
+            isValid = false;
         } else if (!passwordRegex.test(password)) {
             setPasswordError('Mật khẩu phải chứa ít nhất 1 chữ hoa và 1 số');
             isValid = false;
@@ -86,7 +94,48 @@ export default function Register() {
         }
 
         if (isValid) {
-            onRegister();
+            // Call API
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                    }),
+                });
+
+                const data = await handleApiError(response);
+
+                // Assuming successful registration logs the user in immediately
+                if (data.token && data.user) {
+                    // Assuming successful registration logs the user in immediately
+                    // But we want to Alert first as per request
+                    dispatch(updateUser({ ...data.user, token: data.token })); // Keep this if we assume they are "logged in" contextually
+
+                    Alert.alert(
+                        "Đăng ký thành công",
+                        "Bạn đã đăng ký tài khoản thành công. Vui lòng đăng nhập để tiếp tục.",
+                        [
+                            {
+                                text: "OK",
+                                onPress: () => dispatch(navigateTo('login'))
+                            }
+                        ]
+                    );
+
+                } else {
+                    // Fallback if structure is different
+                    onRegister();
+                }
+
+            } catch (error: any) {
+                console.log('Register Error:', error);
+                Alert.alert("Đăng ký thất bại", error.message || "Đã có lỗi xảy ra");
+            }
         }
     };
 

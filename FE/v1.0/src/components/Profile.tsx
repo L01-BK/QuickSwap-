@@ -5,33 +5,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { toggleTheme } from '../store/reducer/themeSlice';
 import { navigateTo, setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export default function Profile() {
     const dispatch = useDispatch();
-    const isNightMode = useSelector((state: RootState) => state.theme.isNightMode);
     const user = useSelector((state: RootState) => state.user);
+    const { colors, isNightMode } = useThemeColors();
 
     const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
 
     const toggleNotification = () => setIsNotificationEnabled(previousState => !previousState);
-
-    // Color definitions based on Light/Dark mode
-    const backgroundColor = isNightMode ? '#121212' : '#FDFDFD';
-    const cardBackgroundColor = isNightMode ? '#1E1E1E' : '#FFFFFF';
-    const textColor = isNightMode ? '#FFFFFF' : '#000000';
-    const subTextColor = isNightMode ? '#AAAAAA' : '#9E9E9E'; // Lighter grey for light mode
-
-    // Icon colors matching the mockup
-    const iconColor = isNightMode ? '#FFFFFF' : '#2D2D2D'; // Dark grey for icons themselves
-    const purpleIconColor = isNightMode ? '#A78BFA' : '#5B4DBC'; // Deep purple for specific icons (Moon)
-    const checkIconColor = isNightMode ? '#FFFFFF' : '#2D2D2D';
-
-    // Icon Background colors - Lavender in light mode, Dark grey in night mode
-    const iconBgColor = isNightMode ? '#333333' : '#F5F6FA';
-    const purpleIconBgColor = isNightMode ? '#333333' : '#F5F6FA'; // Adjust if needed to be distinct
-
-    const chevronColor = isNightMode ? '#666666' : '#C7C7CC';
-    const cardColor = cardBackgroundColor;
 
     const handleMyAccountClick = () => {
         dispatch(setHomeActiveTab('profile'));
@@ -43,7 +26,7 @@ export default function Profile() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header Card */}
             <View style={styles.headerCardContainer}>
                 <View style={styles.headerCard}>
@@ -68,27 +51,27 @@ export default function Profile() {
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                <View style={[styles.sectionContainer, { backgroundColor: cardBackgroundColor }]}>
+                <View style={[styles.sectionContainer, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                     {/* My Account */}
                     <TouchableOpacity style={styles.row} onPress={handleMyAccountClick}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="person-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="person-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>My Account</Text>
-                            <Text style={[styles.rowSubtitle, { color: subTextColor }]}>Make changes to your account</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>My Account</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Make changes to your account</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={chevronColor} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
 
                     {/* Night Mode */}
                     <View style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: purpleIconBgColor }]}>
-                            <Ionicons name="moon-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="moon-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>Night</Text>
-                            <Text style={[styles.rowSubtitle, { color: subTextColor }]}>Manage your light mode</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Night</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Manage your light mode</Text>
                         </View>
                         <Switch
                             trackColor={{ false: "#E0E0E0", true: "#81b0ff" }} // Light grey track when off
@@ -101,12 +84,12 @@ export default function Profile() {
 
                     {/* Notification */}
                     <View style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="notifications-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="notifications-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>Notification</Text>
-                            <Text style={[styles.rowSubtitle, { color: subTextColor }]}>Manage your notification</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Notification</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Manage your notification</Text>
                         </View>
                         <Switch
                             trackColor={{ false: "#E0E0E0", true: "#81b0ff" }}
@@ -119,53 +102,53 @@ export default function Profile() {
 
                     {/* New Password */}
                     <TouchableOpacity style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="checkmark-circle-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="checkmark-circle-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>New Password</Text>
-                            <Text style={[styles.rowSubtitle, { color: subTextColor }]}>Change your password</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>New Password</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Change your password</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={chevronColor} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
 
                     {/* Log out */}
                     <TouchableOpacity style={styles.row} onPress={handleLogout}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="log-out-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="log-out-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>Log out</Text>
-                            <Text style={[styles.rowSubtitle, { color: subTextColor }]}>Further secure your account for safety</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Log out</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Further secure your account for safety</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={chevronColor} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Section: More */}
-                <Text style={[styles.sectionHeader, { color: textColor }]}>More</Text>
+                <Text style={[styles.sectionHeader, { color: colors.text }]}>More</Text>
 
-                <View style={[styles.sectionContainer, { backgroundColor: cardColor }]}>
+                <View style={[styles.sectionContainer, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                     {/* Help & Support */}
                     <TouchableOpacity style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="help-circle-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="help-circle-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>Help & Support</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Help & Support</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={chevronColor} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
 
                     {/* About App */}
                     <TouchableOpacity style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
-                            <Ionicons name="heart-outline" size={22} color={iconColor} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
+                            <Ionicons name="heart-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: textColor }]}>About App</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>About App</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={chevronColor} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
                 </View>
 
@@ -253,11 +236,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         padding: 16,
 
-        backgroundColor: '#FFFFFF',
         borderRadius: 16,
 
         // iOS shadow
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
