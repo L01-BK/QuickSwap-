@@ -18,6 +18,7 @@ import { RootState } from '../store';
 import { BASE_URL, handleApiError } from '../utils/api';
 import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
+import UserProfile from './UserProfile';
 
 interface GridProps {
     onNotificationClick: () => void;
@@ -39,6 +40,8 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
     const [searchHistory, setSearchHistory] = useState<string[]>([]);
     
     const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
+
+    const [viewingUser, setViewingUser] = useState<{id: string | number, name: string} | null>(null);
 
     useEffect(() => {
         const fetchSavedIds = async () => {
@@ -155,33 +158,38 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
         if (isOwner) {
             options.push({
                 text: 'Xóa bài đăng',
-                style: 'destructive' as 'destructive',
+                style: 'destructive',
                 onPress: () => {
                     Alert.alert(
                         "Xác nhận xóa",
                         "Bạn có chắc chắn muốn xóa bài viết này không?",
                         [
-                            { text: "Hủy", style: "cancel" as 'cancel' },
-                            { text: "Xóa", style: "destructive" as 'destructive', onPress: () => handleDeletePost(item.id) }
+                            { text: "Hủy", style: "cancel" },
+                            { text: "Xóa", style: "destructive", onPress: () => handleDeletePost(item.id) }
                         ]
                     );
+                }
+            });
+        } else {
+
+            options.push({
+                text: 'Xem tài khoản người dùng',
+                onPress: () => {
+                    setViewingUser({
+                        id: item.userId,
+                        name: item.user
+                    });
                 }
             });
         }
 
         options.push({
-            text: 'Đánh giá người dùng',
-            onPress: () => Alert.alert("Thông báo", `Chức năng đánh giá user ${item.user} đang phát triển.`)
-        });
-
-        options.push({
             text: 'Hủy',
-            style: 'cancel' as 'cancel'
+            style: 'cancel'
         });
 
         Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết của bạn" : `Bài viết của ${item.user}`, options);
     };
-
 
     const performSearch = async (keyword: string) => {
         if (!keyword.trim()) return;
@@ -269,6 +277,61 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
         setLoading(false);
     };
 
+    const renderPostItem = (item: Post) => (
+        <TouchableOpacity
+            key={item.id}
+            style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onPostClick(item)}
+        >
+            <View style={styles.postHeader}>
+                <Text style={[styles.postUser, { color: colors.text }]}>{item.user}</Text>
+            </View>
+            <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
+                {item.images && item.images.length > 0 ? (
+                    <Image source={{ uri: item.images[0] }} style={styles.postCardImage} resizeMode="cover" />
+                ) : (
+                    <Ionicons name="image-outline" size={60} color={colors.subText} />
+                )}
+            </View>
+            <View style={styles.postContent}>
+                <Text style={[styles.postTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.postTime, { color: colors.subText }]}>{item.time}</Text>
+                <View style={styles.tagsContainer}>
+                    {item.tags.map((tag, idx) => (
+                        <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
+                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowContact(item)}>
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerIcon} onPress={() => toggleBookmark(item.id)}>
+                    <Ionicons
+                        name={bookmarkedIds.includes(item.id) ? "bookmark" : "bookmark-outline"}
+                        size={20}
+                        color={bookmarkedIds.includes(item.id) ? "#60A5FA" : colors.subText}
+                    />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowOptions(item)}>
+                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} />
+                </TouchableOpacity>
+            </View>
+        </TouchableOpacity>
+    );
+
+    if (viewingUser) {
+        return (
+            <UserProfile 
+                userId={viewingUser.id} 
+                initialName={viewingUser.name}
+                onBack={() => setViewingUser(null)}
+            />
+        );
+    }
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
@@ -317,55 +380,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
                                 <Text style={{ color: colors.subText, marginTop: 10 }}>Đang tải dữ liệu...</Text>
                             </View>
                         ) : filteredPosts.length > 0 ? (
-                            filteredPosts.map((post) => (
-                                <TouchableOpacity
-                                    key={post.id}
-                                    style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                                    onPress={() => onPostClick(post)}
-                                >
-                                    {/* --- 3. Giao diện bài viết giống hệt Home --- */}
-                                    <View style={styles.postHeader}>
-                                        <Text style={[styles.postUser, { color: colors.text }]}>{post.user}</Text>
-                                    </View>
-                                    
-                                    <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
-                                        {post.images && post.images.length > 0 ? (
-                                            <Image source={{ uri: post.images[0] }} style={styles.postCardImage} resizeMode="cover" />
-                                        ) : (
-                                            <Ionicons name="image-outline" size={60} color={colors.subText} />
-                                        )}
-                                    </View>
-                                    
-                                    <View style={styles.postContent}>
-                                        <Text style={[styles.postTitle, { color: colors.text }]}>{post.title}</Text>
-                                        <Text style={[styles.postTime, { color: colors.subText }]}>{post.time}</Text>
-                                        <View style={styles.tagsContainer}>
-                                            {post.tags.map((tag, idx) => (
-                                                <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
-                                                    <Text style={styles.tagText}>{tag}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
-
-                                    {/* Footer giống Home: Contact, Bookmark, Options */}
-                                    <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
-                                        <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowContact(post)}>
-                                            <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.footerIcon} onPress={() => toggleBookmark(post.id)}>
-                                            <Ionicons
-                                                name={bookmarkedIds.includes(post.id) ? "bookmark" : "bookmark-outline"}
-                                                size={20}
-                                                color={bookmarkedIds.includes(post.id) ? "#60A5FA" : colors.subText}
-                                            />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowOptions(post)}>
-                                            <Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} />
-                                        </TouchableOpacity>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
+                            filteredPosts.map((post) => renderPostItem(post))
                         ) : (
                             <View style={styles.emptyState}>
                                 <Ionicons name="search" size={50} color={colors.border} />
@@ -469,7 +484,6 @@ const styles = StyleSheet.create({
     tagBlue: { backgroundColor: '#60A5FA' },
     tagLightBlue: { backgroundColor: '#93C5FD' },
     tagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-    
     postFooter: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1 },
     footerIcon: { padding: 5 },
 });

@@ -160,7 +160,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
     const getAvatar = (item: NotificationItem) => {
         return item.senderAvatar 
             ? { uri: item.senderAvatar } 
-            : { uri: 'https://i.pravatar.cc/100?img=12' };
+            : require('../../assets/noti-icon.png');
     };
 
     const renderItem = ({ item }: { item: NotificationItem }) => (

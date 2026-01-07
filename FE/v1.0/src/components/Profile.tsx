@@ -21,6 +21,14 @@ export default function Profile() {
         dispatch(navigateTo('my-account'));
     };
 
+    const handleHelpSupportClick = () => {
+        dispatch(navigateTo('help-support'));
+    };
+
+    const handleAboutAppClick = () => {
+        dispatch(navigateTo('about-app'));
+    };
+
     const handleLogout = () => {
         dispatch(navigateTo('login'));
     };
@@ -74,8 +82,8 @@ export default function Profile() {
                             <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Manage your light mode</Text>
                         </View>
                         <Switch
-                            trackColor={{ false: "#E0E0E0", true: "#81b0ff" }} // Light grey track when off
-                            thumbColor={isNightMode ? "#f5dd4b" : "#A9A9A9"} // Dark grey thumb when off in light mode
+                            trackColor={{ false: "#E0E0E0", true: "#81b0ff" }}
+                            thumbColor={isNightMode ? "#f5dd4b" : "#A9A9A9"}
                             ios_backgroundColor="#E0E0E0"
                             onValueChange={() => { dispatch(toggleTheme()); }}
                             value={isNightMode}
@@ -130,7 +138,7 @@ export default function Profile() {
 
                 <View style={[styles.sectionContainer, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                     {/* Help & Support */}
-                    <TouchableOpacity style={styles.row}>
+                    <TouchableOpacity style={styles.row} onPress={handleHelpSupportClick}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
                             <Ionicons name="help-circle-outline" size={22} color={colors.text} />
                         </View>
@@ -141,7 +149,7 @@ export default function Profile() {
                     </TouchableOpacity>
 
                     {/* About App */}
-                    <TouchableOpacity style={styles.row}>
+                    <TouchableOpacity style={styles.row} onPress={handleAboutAppClick}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
                             <Ionicons name="heart-outline" size={22} color={colors.text} />
                         </View>
@@ -168,7 +176,7 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     headerCard: {
-        backgroundColor: '#60A5FA', // Blue header
+        backgroundColor: '#60A5FA',
         borderRadius: 12,
         padding: 20,
         // Shadow for header

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -13,105 +13,203 @@ interface UserProfileProps {
     onBack: () => void;
 }
 
+interface PublicUserInfo {
+    id: number;
+    name: string;
+    username: string;
+    handle: string;
+    avatarUrl: string | null;
+    university: string | null;
+    address: string | null;
+    rating: number; 
+    email?: string;
+    phone?: string;
+}
+
+interface ReviewItem {
+    id: number;
+    raterId: number;
+    ratedId: number;
+    score: number;
+    comment: string;
+    createdAt: string;
+}
+
+interface RatingSummary {
+    count: number;
+    average: number;
+}
+
 export default function UserProfile({ userId, initialName, onBack }: UserProfileProps) {
     const { colors, isNightMode } = useThemeColors();
     const currentUser = useSelector((state: RootState) => state.user);
     
-    const [userData, setUserData] = useState<any>({
-        name: initialName || 'Người dùng',
-        username: '...',
-        avatarUrl: null,
-        rating: 0,
-        email: 'Đang tải...',
-        phone: 'Đang tải...',
-        university: '...',
-        address: '...'
-    });
+    const [userData, setUserData] = useState<PublicUserInfo | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const renderStars = (rating: number) => {
+    const [reviews, setReviews] = useState<ReviewItem[]>([]);
+    const [ratingSummary, setRatingSummary] = useState<RatingSummary>({ count: 0, average: 0 });
+    
+    const [modalVisible, setModalVisible] = useState(false);
+    const [submitScore, setSubmitScore] = useState(5);
+    const [submitComment, setSubmitComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+    };
+
+    const renderStars = (rating: number, size = 20, interactive = false, setRating?: (val: number) => void) => {
         const stars = [];
         for (let i = 1; i <= 5; i++) {
-            if (i <= Math.floor(rating)) {
-                stars.push(<Ionicons key={i} name="star" size={20} color="#FFD700" />);
-            } else if (i === Math.ceil(rating) && !Number.isInteger(rating)) {
-                stars.push(<Ionicons key={i} name="star-half" size={20} color="#FFD700" />);
+            const name = i <= Math.floor(rating) ? "star" : (i === Math.ceil(rating) && !Number.isInteger(rating) ? "star-half" : "star-outline");
+            
+            if (interactive && setRating) {
+                stars.push(
+                    <TouchableOpacity key={i} onPress={() => setRating(i)}>
+                        <Ionicons name={i <= rating ? "star" : "star-outline"} size={size} color="#FFD700" style={{ marginHorizontal: 2 }} />
+                    </TouchableOpacity>
+                );
             } else {
-                stars.push(<Ionicons key={i} name="star-outline" size={20} color="#FFD700" />);
+                stars.push(<Ionicons key={i} name={name} size={size} color="#FFD700" />);
             }
         }
         return stars;
     };
 
+    const fetchAllData = async () => {
+        if (!currentUser.token || !userId) return;
+
+        try {
+            const userRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
+                headers: { 'Authorization': `Bearer ${currentUser.token}` },
+            });
+            const userData = await handleApiError(userRes);
+            setUserData(userData);
+
+            const summaryRes = await fetch(`${BASE_URL}/api/users/${userId}/rating-summary`, {
+                headers: { 'Authorization': `Bearer ${currentUser.token}` },
+            });
+            if (summaryRes.ok) {
+                const summaryData = await summaryRes.json();
+                setRatingSummary(summaryData);
+            }
+
+            const listRes = await fetch(`${BASE_URL}/api/users/${userId}/ratings`, {
+                headers: { 'Authorization': `Bearer ${currentUser.token}` },
+            });
+            if (listRes.ok) {
+                const listData = await listRes.json();
+                setReviews(listData);
+            }
+
+        } catch (error) {
+            console.error("Lỗi tải dữ liệu:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchUserInfo = async () => {
-            if (!currentUser.token || !userId) {
-                console.log("Thiếu Token hoặc UserId");
-                setLoading(false);
-                return;
-            }
-
-            console.log("Đang tải thông tin cho User ID:", userId);
-
-            try {
-                const url = `${BASE_URL}/api/users/${userId}`;
-                console.log("Gọi API:", url);
-
-                const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${currentUser.token}` },
-                });
-
-                console.log("Trạng thái phản hồi:", response.status);
-
-                const data = await handleApiError(response);
-                setUserData(data);
-            } catch (error) {
-                console.error("Chi tiết lỗi:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchUserInfo();
+        fetchAllData();
     }, [userId, currentUser.token]);
 
-    const handleRateUser = () => {
-        Alert.alert(
-            "Đánh giá người dùng",
-            `Bạn muốn đánh giá bao nhiêu sao cho ${userData.name}?`,
-            [
-                { text: "Hủy", style: "cancel" },
-                { text: "5 Sao", onPress: () => Alert.alert("Cảm ơn", "Đã gửi đánh giá!") }
-            ]
-        );
+    const handleOpenModal = () => {
+        setSubmitScore(5);
+        setSubmitComment('');
+        setModalVisible(true);
     };
+
+
+const handleSubmitRating = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+
+        const response = await fetch(`${BASE_URL}/api/users/${userId}/rate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                score: submitScore,
+                comment: submitComment
+            })
+        });
+
+        await handleApiError(response);
+
+        try {
+            const notiPayload = {
+                title: "Bạn nhận được đánh giá mới",
+                body: `${currentUser.name} đã đánh giá bạn ${submitScore} sao: "${submitComment}"`,
+                type: "RATING" 
+            };
+
+            await fetch(`${BASE_URL}/api/notifications/send-to-user/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.token}`,
+                },
+                body: JSON.stringify(notiPayload),
+            });
+            
+            console.log("Đã gửi thông báo đánh giá thành công");
+        } catch (notiError) {
+            console.log("Lỗi gửi thông báo:", notiError);
+        }
+
+        Alert.alert("Thành công", "Cảm ơn bạn đã đánh giá!");
+        setModalVisible(false);
+
+        setSubmitComment('');
+        setSubmitScore(5);
+
+        fetchAllData(); 
+
+    } catch (error) {
+        console.error("Lỗi gửi đánh giá:", error);
+        Alert.alert("Lỗi", "Không thể gửi đánh giá. Vui lòng thử lại.");
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const cardBg = isNightMode ? '#1E1E1E' : '#fff';
     const subTextColor = isNightMode ? '#aaa' : '#555';
     const dividerColor = isNightMode ? '#333' : '#F3F4F6';
+    const inputBg = isNightMode ? '#333' : '#f9f9f9';
 
-    const renderField = (label: string, value: string, isLink = false) => (
-        <View style={styles.row}>
-            <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-            <Text style={[styles.value, isLink && styles.link, { color: subTextColor }]}>
-                {value || "Chưa cập nhật"}
-            </Text>
-        </View>
+    const renderField = (label: string, value: string | null | undefined, isLink = false) => (
+        <>
+            <View style={styles.row}>
+                <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+                <Text style={[styles.value, isLink && value && styles.link, { color: subTextColor }]}>
+                    {value || "Chưa cập nhật"}
+                </Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+        </>
     );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Thông tin người dùng</Text>
                 
-                {/* NÚT ĐÁNH GIÁ (Thay thế nút Edit) */}
-                <TouchableOpacity onPress={handleRateUser} style={styles.rateButton}>
-                    <Ionicons name="star-outline" size={26} color={colors.primary} />
-                </TouchableOpacity>
+                {/* Nút mở Modal đánh giá: Luôn hiện nếu không phải chính mình */}
+                {Number(userId) !== Number(currentUser.id) && (
+                    <TouchableOpacity onPress={handleOpenModal} style={styles.rateButton}>
+                        <Ionicons name="star" size={26} color={colors.primary} />
+                    </TouchableOpacity>
+                )}
             </View>
 
             {loading ? (
@@ -120,45 +218,112 @@ export default function UserProfile({ userId, initialName, onBack }: UserProfile
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    {/* Profile Header Block */}
+                    {/* Profile Header */}
                     <View style={styles.profileHeader}>
                         <View style={styles.avatarContainer}>
                             <View style={styles.avatarPlaceholder}>
                                 <Image
-                                    source={{ uri: userData.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                                    source={{ uri: userData?.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
                                     style={styles.avatar}
                                 />
                             </View>
                         </View>
-
-                        <Text style={[styles.nameText, { color: colors.text }]}>{userData.name}</Text>
-                        <Text style={{ color: subTextColor }}>@{userData.username || 'unknown'}</Text>
+                        <Text style={[styles.nameText, { color: colors.text }]}>
+                            {userData?.name || initialName || "Người dùng"}
+                        </Text>
+                        <Text style={{ color: subTextColor }}>
+                            {userData?.handle ? `@${userData.handle}` : (userData?.username ? `@${userData.username}` : '')}
+                        </Text>
                     </View>
 
                     {/* Info Card */}
                     <View style={[styles.card, { backgroundColor: cardBg }]}>
                         <View style={styles.row}>
-                            <Text style={[styles.label, { color: colors.text }]}>Đánh giá</Text>
+                            <Text style={[styles.label, { color: colors.text }]}>Đánh giá chung</Text>
                             <View style={styles.ratingContainer}>
-                                {renderStars(userData.rating || 0)}
-                                <Text style={[styles.ratingText, { color: colors.text }]}>{userData.rating || 0}</Text>
+                                {renderStars(ratingSummary.average || userData?.rating || 0)}
+                                <Text style={[styles.ratingText, { color: colors.text }]}>
+                                    {ratingSummary.average ? ratingSummary.average.toFixed(1) : (userData?.rating || 0)}
+                                    <Text style={{fontSize: 12, fontWeight: 'normal', color: subTextColor}}> ({ratingSummary.count} lượt)</Text>
+                                </Text>
                             </View>
                         </View>
                         <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                        {renderField('Email', userData.email, true)}
-                        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                        {renderField('Trường', userData?.university)}
+                        {renderField('Địa chỉ', userData?.address)}
+                    </View>
 
-                        {renderField('SĐT', userData.phone)}
-                        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                        {renderField('Trường', userData.university)}
-                        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                        {renderField('Địa chỉ', userData.address)}
+                    {/* Danh sách Reviews */}
+                    <View style={[styles.reviewsContainer, { backgroundColor: cardBg }]}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Bài đánh giá ({reviews.length})</Text>
+                        {reviews.length === 0 ? (
+                            <Text style={{ color: subTextColor, fontStyle: 'italic', textAlign: 'center', marginTop: 10 }}>Chưa có đánh giá nào.</Text>
+                        ) : (
+                            reviews.map((item) => (
+                                <View key={item.id} style={[styles.reviewItem, { borderBottomColor: dividerColor }]}>
+                                    <View style={styles.reviewHeader}>
+                                        <Text style={[styles.reviewerName, { color: colors.text }]}>Người dùng #{item.raterId}</Text>
+                                        <Text style={{ color: subTextColor, fontSize: 12 }}>{formatDate(item.createdAt)}</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', marginBottom: 5 }}>
+                                        {renderStars(item.score, 14)}
+                                    </View>
+                                    <Text style={{ color: colors.text }}>{item.comment}</Text>
+                                </View>
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             )}
+
+            {/* MODAL ĐÁNH GIÁ - Luôn ở chế độ tạo mới */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: cardBg }]}>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>Đánh giá người dùng</Text>
+                        
+                        <View style={styles.starSelectContainer}>
+                            {renderStars(submitScore, 40, true, setSubmitScore)}
+                        </View>
+
+                        <TextInput
+                            style={[styles.modalInput, { backgroundColor: inputBg, color: colors.text, borderColor: dividerColor }]}
+                            placeholder="Nhập nhận xét của bạn..."
+                            placeholderTextColor={subTextColor}
+                            multiline
+                            numberOfLines={4}
+                            value={submitComment}
+                            onChangeText={setSubmitComment}
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, styles.cancelBtn]} 
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <Text style={styles.cancelBtnText}>Hủy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, styles.submitBtn]} 
+                                onPress={handleSubmitRating}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <Text style={styles.submitBtnText}>Gửi</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -183,4 +348,22 @@ const styles = StyleSheet.create({
     link: { textDecorationLine: 'underline' },
     ratingContainer: { flexDirection: 'row', alignItems: 'center' },
     ratingText: { marginLeft: 8, fontSize: 16, fontWeight: 'bold' },
+    
+    reviewsContainer: { width: '90%', borderRadius: 16, padding: 20, marginTop: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+    reviewItem: { paddingVertical: 12, borderBottomWidth: 1 },
+    reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+    reviewerName: { fontWeight: 'bold', fontSize: 14 },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '85%', padding: 20, borderRadius: 16, alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+    starSelectContainer: { flexDirection: 'row', marginBottom: 20 },
+    modalInput: { width: '100%', height: 100, borderRadius: 8, padding: 10, borderWidth: 1, textAlignVertical: 'top', marginBottom: 20 },
+    modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
+    modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    cancelBtn: { backgroundColor: '#e0e0e0', marginRight: 10 },
+    submitBtn: { backgroundColor: '#60A5FA' },
+    cancelBtnText: { color: '#333', fontWeight: 'bold' },
+    submitBtnText: { color: '#fff', fontWeight: 'bold' },
 });

@@ -12,7 +12,9 @@ export type Screen =
     | 'post-detail'
     | 'my-account'
     | 'profile'
-    | 'notification';
+    | 'notification'
+    | 'help-support'
+    | 'about-app';
 
 export type OtpContext = 'register' | 'forgot-password';
 export type MainTab = 'home' | 'grid' | 'add' | 'bookmark' | 'profile';

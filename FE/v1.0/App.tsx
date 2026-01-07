@@ -18,6 +18,8 @@ import PostDetail from './src/components/PostDetail';
 import { Post } from './src/types';
 import Profile from './src/components/Profile';
 import Notification from './src/components/Notification';
+import HelpSupport from './src/components/HelpSupport';
+import AboutApp from './src/components/AboutApp';
 
 
 /* =======================
@@ -95,6 +97,12 @@ function MainContent() {
       case 'notification':
         return <Notification onBack={() => dispatch(navigateTo('home'))} />;
 
+      case 'help-support':
+        return <HelpSupport />;
+
+      case 'about-app':
+        return <AboutApp />;
+
       default:
         return null;
     }
@@ -127,6 +135,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff', // Root background will be controlled by components now or global theme listener
+    backgroundColor: '#fff', 
   },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, AlertButton, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Alert, AlertButton, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { BASE_URL, handleApiError } from '../utils/api';
+import UserProfile from './UserProfile';
 
 interface BookmarkProps {
     onPostClick: (post: Post) => void;
@@ -22,6 +23,8 @@ export default function Bookmark({
     const user = useSelector((state: RootState) => state.user);
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(false);
+
+    const [viewingUser, setViewingUser] = useState<{id: string | number, name: string} | null>(null);
 
     const fetchSavedPosts = async () => {
         if (!user.token) return;
@@ -100,19 +103,33 @@ export default function Bookmark({
     };
 
     const handleShowOptions = (item: Post) => {
+        const isOwner = user.id === item.userId;
         const options: AlertButton[] = [];
         
-        options.push({
-            text: 'Đánh giá người dùng',
-            onPress: () => Alert.alert("Thông báo", `Chức năng đánh giá user ${item.user} đang phát triển.`)
-        });
+        if (isOwner) {
+            options.push({
+                text: 'Xóa bài đăng',
+                style: 'destructive',
+                onPress: () => Alert.alert("Thông báo", "Vui lòng vào trang cá nhân để xóa bài viết của bạn.")
+            });
+        } else {
+            options.push({
+                text: 'Xem tài khoản người dùng',
+                onPress: () => {
+                    setViewingUser({
+                        id: item.userId,
+                        name: item.user
+                    });
+                }
+            });
+        }
 
         options.push({
             text: 'Hủy',
             style: 'cancel'
         });
 
-        Alert.alert("Tùy chọn", `Bài viết của ${item.user}`, options);
+        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
     };
 
     const renderPostItem = ({ item }: { item: Post }) => (
@@ -149,7 +166,7 @@ export default function Bookmark({
                     <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
                 </TouchableOpacity>
                 
-                {/* Nút Bookmark luôn sáng màu vì đây là trang Bookmark, bấm vào để Bỏ lưu */}
+                {/* Nút Bookmark luôn sáng màu (filled) vì đây là trang Bookmark */}
                 <TouchableOpacity style={styles.footerIcon} onPress={() => handleUnsave(item.id)}>
                     <Ionicons
                         name="bookmark"
@@ -164,6 +181,16 @@ export default function Bookmark({
             </View>
         </TouchableOpacity>
     );
+
+    if (viewingUser) {
+        return (
+            <UserProfile 
+                userId={viewingUser.id} 
+                initialName={viewingUser.name}
+                onBack={() => setViewingUser(null)}
+            />
+        );
+    }
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -184,7 +211,8 @@ export default function Bookmark({
                     <ActivityIndicator size="large" color="#60A5FA" style={{ marginTop: 20 }} />
                 ) : savedPosts.length === 0 ? (
                     <View style={styles.emptyContainer}>
-                        <Text style={[styles.emptyText, { color: colors.subText }]}>Chưa có bài đăng nào được lưu.</Text>
+                        <Ionicons name="bookmark-outline" size={50} color={colors.subText} />
+                        <Text style={[styles.emptyText, { color: colors.subText, marginTop: 10 }]}>Chưa có bài đăng nào được lưu.</Text>
                     </View>
                 ) : (
                     <FlatList
@@ -207,7 +235,7 @@ const styles = StyleSheet.create({
     logoHighlight: { color: '#60A5FA' },
     notificationBadge: { position: 'absolute', top: 0, right: 0, width: 8, height: 8, borderRadius: 4, backgroundColor: 'red' },
     
-    screenTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 15 },
+    screenTitle: { fontSize: 20, fontWeight: 'bold', marginVertical: 15 },
     
     postCard: { borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 20 },
     postHeader: { marginBottom: 10 },

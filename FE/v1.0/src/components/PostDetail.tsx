@@ -9,6 +9,8 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { BASE_URL, handleApiError } from '../utils/api';
 import { Post } from '../types';
 
+import UserProfile from './UserProfile'; // Import thêm component UserProfile
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function PostDetail() {
@@ -22,6 +24,10 @@ export default function PostDetail() {
     
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    
+    // Thêm state viewingUser giống Home.tsx
+    const [viewingUser, setViewingUser] = useState<{id: string | number, name: string} | null>(null);
+    
     const cardWidth = SCREEN_WIDTH - 40;
 
     if (!initialPost) {
@@ -110,6 +116,7 @@ export default function PostDetail() {
 
     const displayPost = post || initialPost;
 
+    // Cập nhật hàm này để giống logic Home.tsx
     const handleDetailOptions = () => {
         const currentPost = post || initialPost;
         if (!currentPost) return;
@@ -153,16 +160,39 @@ export default function PostDetail() {
                     );
                 }
             });
+        } else {
+            options.push({
+                text: 'Xem tài khoản người dùng',
+                onPress: () => {
+                    setViewingUser({
+                        id: currentPost.userId,
+                        name: currentPost.user
+                    });
+                }
+            });
         }
-        options.push({ text: 'Đánh giá người dùng', onPress: () => Alert.alert("Thông báo", "Chức năng đang phát triển.") });
+
         options.push({ text: 'Hủy', style: 'cancel' });
-        Alert.alert("Tùy chọn", undefined, options);
+        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${currentPost.user}`, options);
     };
+
     const onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const contentOffsetX = event.nativeEvent.contentOffset.x;
         const currentIndex = Math.round(contentOffsetX / cardWidth);
         setActiveImageIndex(currentIndex);
     };
+
+    // Render UserProfile nếu đang xem user
+    if (viewingUser) {
+        return (
+            <UserProfile 
+                userId={viewingUser.id} 
+                initialName={viewingUser.name}
+                onBack={() => setViewingUser(null)}
+            />
+        );
+    }
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <View style={styles.header}>
