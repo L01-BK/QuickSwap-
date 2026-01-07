@@ -133,8 +133,16 @@ export default function MyAccount() {
                     <Ionicons name="chevron-back" size={28} color={iconColor} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: textColor }]}>My Account</Text>
-                <TouchableOpacity onPress={handleEditToggle} style={styles.editHeaderButton}>
-                    <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={26} color={iconColor} />
+                <TouchableOpacity
+                    onPress={handleEditToggle}
+                    style={styles.editHeaderButton}
+                    disabled={isUploading}
+                >
+                    {isUploading ? (
+                        <ActivityIndicator size="small" color={iconColor} />
+                    ) : (
+                        <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={26} color={iconColor} />
+                    )}
                 </TouchableOpacity>
             </View>
 

@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { toggleTheme } from '../store/reducer/themeSlice';
-import { navigateTo, setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { navigateTo, setHomeActiveTab, setOtpContext, setResetEmail } from '../store/reducer/navigationSlice';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { forgotPassword } from '../services/authService';
 
 export default function Profile() {
     const dispatch = useDispatch();
@@ -19,6 +20,20 @@ export default function Profile() {
     const handleMyAccountClick = () => {
         dispatch(setHomeActiveTab('profile'));
         dispatch(navigateTo('my-account'));
+    };
+
+    const handleNewPassword = () => {
+        if (user.email) {
+            // Optimistic navigation
+            console.log("Sending OTP to:", user.email);
+            forgotPassword(user.email).catch(err => console.error("OTP send error:", err));
+
+            dispatch(setResetEmail(user.email));
+            dispatch(setOtpContext('profile-change-password'));
+            dispatch(navigateTo('otp'));
+        } else {
+            alert("Không tìm thấy email của bạn. Vui lòng cập nhật email trong phần My Account.");
+        }
     };
 
     const handleLogout = () => {
@@ -101,7 +116,7 @@ export default function Profile() {
                     </View>
 
                     {/* New Password */}
-                    <TouchableOpacity style={styles.row}>
+                    <TouchableOpacity style={styles.row} onPress={handleNewPassword}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
                             <Ionicons name="checkmark-circle-outline" size={22} color={colors.text} />
                         </View>

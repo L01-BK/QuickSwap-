@@ -14,7 +14,7 @@ export type Screen =
     | 'profile'
     | 'notification';
 
-export type OtpContext = 'register' | 'forgot-password';
+export type OtpContext = 'register' | 'forgot-password' | 'profile-change-password';
 export type MainTab = 'home' | 'grid' | 'add' | 'bookmark' | 'profile';
 
 interface NavigationState {
