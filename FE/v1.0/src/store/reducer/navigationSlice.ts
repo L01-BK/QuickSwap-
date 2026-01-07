@@ -22,6 +22,8 @@ interface NavigationState {
     otpContext: OtpContext;
     selectedPost: Post | null;
     homeActiveTab: MainTab;
+    resetEmail?: string;
+    resetOtp?: string;
 }
 
 const initialState: NavigationState = {
@@ -29,6 +31,8 @@ const initialState: NavigationState = {
     otpContext: 'register',
     selectedPost: null,
     homeActiveTab: 'home',
+    resetEmail: '',
+    resetOtp: '',
 };
 
 const navigationSlice = createSlice({
@@ -47,9 +51,15 @@ const navigationSlice = createSlice({
         setHomeActiveTab: (state, action: PayloadAction<MainTab>) => {
             state.homeActiveTab = action.payload;
         },
+        setResetEmail: (state, action: PayloadAction<string>) => {
+            state.resetEmail = action.payload;
+        },
+        setResetOtp: (state, action: PayloadAction<string>) => {
+            state.resetOtp = action.payload;
+        },
         resetNavigation: () => initialState,
     },
 });
 
-export const { navigateTo, setOtpContext, selectPost, setHomeActiveTab, resetNavigation } = navigationSlice.actions;
+export const { navigateTo, setOtpContext, selectPost, setHomeActiveTab, resetNavigation, setResetEmail, setResetOtp } = navigationSlice.actions;
 export default navigationSlice.reducer;
