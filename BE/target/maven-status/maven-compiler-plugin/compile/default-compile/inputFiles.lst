@@ -1,46 +1,52 @@
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\CloudinaryConfig.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\FirebaseConfig.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\OpenApiConfig.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\SecurityConfig.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\SwaggerUiLauncher.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\AuthController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\CategoryController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\FileUploadController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\NotificationController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\PostController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\RatingController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\UserController.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\AuthResponse.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\LoginRequest.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\NotificationDto.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\PostRequest.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\PostResponse.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingRequest.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingResponse.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingSummary.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RegisterRequest.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UpdateProfileRequest.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UserResponse.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Category.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\NotificationHistory.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Post.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\PostStatus.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Rating.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Role.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\SavedPost.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\User.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\QuickswapBackendApplication.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\NotificationHistoryRepository.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\PostRepository.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\RatingRepository.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\SavedPostRepository.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\UserRepository.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\security\JwtAuthenticationFilter.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\security\JwtUtils.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\FCMService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\FileUploadService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\NotificationService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\PostService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\RatingService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\SavedPostService.java
-D:\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\UserService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\CloudinaryConfig.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\FirebaseConfig.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\OpenApiConfig.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\SecurityConfig.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\config\SwaggerUiLauncher.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\AuthController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\CategoryController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\FileUploadController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\NotificationController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\PostController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\RatingController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\controller\UserController.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\AuthResponse.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\ForgotPasswordRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\LoginRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\NotificationDto.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\PostRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\PostResponse.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingResponse.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RatingSummary.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\RegisterRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\ResetPasswordRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UpdateProfileRequest.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UserResponse.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Category.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\NotificationHistory.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\PasswordResetToken.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Post.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\PostStatus.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Rating.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Role.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\SavedPost.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\User.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\QuickswapBackendApplication.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\NotificationHistoryRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\PasswordResetTokenRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\PostRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\RatingRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\SavedPostRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\repository\UserRepository.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\security\JwtAuthenticationFilter.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\security\JwtUtils.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\EmailService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\FCMService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\FileUploadService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\NotificationService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\PasswordResetService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\PostService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\RatingService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\SavedPostService.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\service\UserService.java
