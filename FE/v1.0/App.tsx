@@ -34,7 +34,8 @@ import { navigateTo, selectPost } from './src/store/reducer/navigationSlice';
 
 function MainContent() {
   const dispatch = useDispatch();
-  const { currentScreen, otpContext, selectedPost, homeActiveTab } = useSelector((state: RootState) => state.navigation);
+  const currentScreen = useSelector((state: RootState) => state.navigation.currentScreen);
+  const selectedPost = useSelector((state: RootState) => state.navigation.selectedPost);
 
   const handlePostClick = (post: any) => {
     dispatch(selectPost(post));
@@ -44,6 +45,7 @@ function MainContent() {
   const handleNotificationClick = () => {
     dispatch(navigateTo('notification'));
   };
+
 
   const renderScreen = () => {
     switch (currentScreen) {

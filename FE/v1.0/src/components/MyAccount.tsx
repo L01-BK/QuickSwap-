@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,6 +23,11 @@ export default function MyAccount() {
 
     React.useEffect(() => {
         setFormData(user);
+
+        // Auto-enable edit mode if profile is incomplete
+        if (!user.name || !user.username || !user.phone || !user.university || !user.address) {
+            setIsEditing(true);
+        }
     }, [user]);
 
     const onBack = () => {
@@ -32,15 +37,30 @@ export default function MyAccount() {
 
     const handleEditToggle = async () => {
         if (isEditing) {
+            // Validation
+            if (!formData.name || !formData.username || !formData.phone || !formData.university || !formData.address) {
+                Alert.alert(
+                    'Thiếu thông tin',
+                    'Vui lòng điền đầy đủ các trường bắt buộc trước khi tiếp tục.',
+                    [{ text: 'OK' }]
+                ); return;
+            }
+
             try {
+                let pData = { ...formData };
+
+                // Set default avatar if missing
+                if (!pData.avatarUrl) {
+                    pData.avatarUrl = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
+                }
+
                 // Call API to update user profile
-                const updatedUser = await updateUserProfile(formData, user.token);
+                const updatedUser = await updateUserProfile(pData, user.token);
                 dispatch(updateUser(updatedUser));
                 setIsEditing(false);
             } catch (error) {
                 console.error("Failed to update profile:", error);
-                // Optionally handle error state here
-                alert("Failed to update profile. Please try again.");
+                Alert.alert("Cập nhật thông tin thất bại. Vui lòng thử lại.");
             }
         } else {
             setIsEditing(true);
@@ -74,7 +94,7 @@ export default function MyAccount() {
                 }
             } catch (error) {
                 console.error("Error uploading image:", error);
-                alert("Failed to upload image. Please try again.");
+                Alert.alert("Failed to upload image. Please try again.");
             } finally {
                 setIsUploading(false);
             }
@@ -129,9 +149,12 @@ export default function MyAccount() {
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color={iconColor} />
-                </TouchableOpacity>
+                {/* Hide back button if forced update */}
+                {(!user.name || !user.username || !user.phone || !user.university || !user.address) ? null : (
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={28} color={iconColor} />
+                    </TouchableOpacity>
+                )}
                 <Text style={[styles.headerTitle, { color: textColor }]}>My Account</Text>
                 <TouchableOpacity
                     onPress={handleEditToggle}
