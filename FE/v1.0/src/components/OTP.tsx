@@ -7,14 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { navigateTo } from '../store/reducer/navigationSlice';
-
-// --- OTP Component ---
-
+import { navigateTo, setResetOtp } from '../store/reducer/navigationSlice';
+import { checkOtp } from '../services/authService';
+import { ActivityIndicator } from 'react-native';
 
 export default function OTP() {
     const dispatch = useDispatch();
-    const { otpContext } = useSelector((state: RootState) => state.navigation);
+    const { otpContext, resetEmail } = useSelector((state: RootState) => state.navigation);
+    const [loading, setLoading] = useState(false);
 
     const onVerify = () => {
         if (otpContext === 'register') {
@@ -26,6 +26,7 @@ export default function OTP() {
 
     const onResend = () => {
         console.log("Resend OTP");
+        // Implement resend logic here if needed
     };
 
     const onBack = () => {
@@ -35,7 +36,7 @@ export default function OTP() {
             dispatch(navigateTo('forgot-password'));
         }
     };
-    const [otp, setOtp] = useState(['', '', '', '']);
+    const [otp, setOtp] = useState(['', '', '', '', '', '']); // 6 digits
     const [otpError, setOtpError] = useState('');
     const inputs = useRef<TextInput[]>([]);
 
@@ -50,7 +51,7 @@ export default function OTP() {
         if (otpError) setOtpError('');
 
         // Auto focus next
-        if (text && index < 3) {
+        if (text && index < 5) {
             inputs.current[index + 1].focus();
         }
         // Auto focus prev if delete
@@ -59,17 +60,33 @@ export default function OTP() {
         }
     };
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         if (otp.some(digit => digit === '')) {
-            setOtpError('Vui lòng nhập đủ mã xác minh');
+            setOtpError('Vui lòng nhập đủ mã xác minh 6 số');
             return;
         }
         setOtpError('');
-        onVerify();
+
+        if (otpContext === 'forgot-password') {
+            try {
+                setLoading(true);
+                const otpString = otp.join('');
+                await checkOtp(resetEmail || '', otpString);
+                dispatch(setResetOtp(otpString));
+                onVerify();
+            } catch (error: any) {
+                setOtpError(error.message || 'Mã OTP không đúng hoặc đã hết hạn');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Register flow logic (if needed in future, currently just mock)
+            onVerify();
+        }
     };
 
     const title = "NHẬP MÃ XÁC MINH";
-    const subtitle = "Chúng tôi đã gửi mã 4 số tới mail@gmail.com";
+    const subtitle = `Chúng tôi đã gửi mã 6 số tới ${resetEmail || 'email của bạn'}`;
 
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
@@ -116,8 +133,8 @@ export default function OTP() {
                     </View>
                     {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
 
-                    <TouchableOpacity style={styles.button} onPress={handleVerify}>
-                        <Text style={styles.buttonText}>XÁC NHẬN</Text>
+                    <TouchableOpacity style={styles.button} onPress={handleVerify} disabled={loading}>
+                        <Text style={styles.buttonText}>{loading ? 'ĐANG KIỂM TRA...' : 'XÁC NHẬN'}</Text>
                     </TouchableOpacity>
 
                     <View style={styles.footer}>
@@ -210,17 +227,17 @@ const styles = StyleSheet.create({
     otpContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: 15,
+        gap: 8,
         marginBottom: 40,
         marginTop: 20,
     },
 
     otpInput: {
-        width: 60,
-        height: 70,
+        width: 45,
+        height: 55,
         borderRadius: 8,
         backgroundColor: '#F3F4F6',
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: 'bold',
     },
 

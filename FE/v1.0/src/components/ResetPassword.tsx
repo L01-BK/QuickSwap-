@@ -3,26 +3,28 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { navigateTo } from '../store/reducer/navigationSlice';
-
+import { RootState } from '../store';
+import { resetPassword } from '../services/authService';
+import { Alert } from 'react-native';
 
 export default function ResetPassword() {
     const dispatch = useDispatch();
+    const { resetEmail, resetOtp } = useSelector((state: RootState) => state.navigation);
 
     const onFinish = () => dispatch(navigateTo('login'));
     const onCancel = () => dispatch(navigateTo('login'));
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
-
     const [confirmPasswordError, setConfirmPasswordError] = useState('');
-
+    const [loading, setLoading] = useState(false);
 
     const title = "ĐẶT LẠI MẬT KHẨU";
     const subtitle = "Mật khẩu được đặt lại phải khác với trước đó.";
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
         let isValid = true;
         const passwordRegex = /^(?=.*[A-Z])(?=.*\d).+$/;
 
@@ -47,7 +49,17 @@ export default function ResetPassword() {
         }
 
         if (isValid) {
-            onFinish();
+            try {
+                setLoading(true);
+                await resetPassword(resetEmail || '', resetOtp || '', password);
+                Alert.alert("Thành công", "Mật khẩu đã được đặt lại. Vui lòng đăng nhập lại.", [
+                    { text: "OK", onPress: onFinish }
+                ]);
+            } catch (error: any) {
+                Alert.alert("Lỗi", error.message || 'Không thể đặt lại mật khẩu.');
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -89,6 +101,7 @@ export default function ResetPassword() {
                                 onChangeText={setPassword}
                             />
                         </View>
+                        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
                         <View style={styles.inputContainer}>
                             <TextInput
@@ -106,8 +119,8 @@ export default function ResetPassword() {
                         {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
 
-                        <TouchableOpacity style={styles.button} onPress={handleFinish}>
-                            <Text style={styles.buttonText}>TIẾP THEO</Text>
+                        <TouchableOpacity style={styles.button} onPress={handleFinish} disabled={loading}>
+                            <Text style={styles.buttonText}>{loading ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN'}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>

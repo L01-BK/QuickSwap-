@@ -82,6 +82,20 @@ public class UserService {
         return toUserResponse(user);
     }
 
+    public com.quickswap.backend.dto.PublicUserResponse getPublicProfile(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return com.quickswap.backend.dto.PublicUserResponse.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .username(user.getUsername())
+                .handle(user.getHandle())
+                .avatarUrl(user.getAvatarUrl())
+                .university(user.getUniversity())
+                .address(user.getAddress())
+                .rating(user.getRatingAverage())
+                .build();
+    }
+
     private com.quickswap.backend.dto.UserResponse toUserResponse(User user) {
         return com.quickswap.backend.dto.UserResponse.builder()
                 .id(user.getId())
