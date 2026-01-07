@@ -23,6 +23,7 @@ F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\bac
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\ResetPasswordRequest.java
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UpdateProfileRequest.java
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UserResponse.java
+F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\VerifyOtpRequest.java
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Category.java
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\NotificationHistory.java
 F:\NEW\KHOA\HK251\Mobile\BTL final\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\PasswordResetToken.java

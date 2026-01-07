@@ -40,4 +40,9 @@ public class UserController {
         String email = authentication.getName();
         return ResponseEntity.ok(userService.updateProfile(email, request));
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<com.quickswap.backend.dto.PublicUserResponse> getPublicProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getPublicProfile(id));
+    }
 }
