@@ -133,6 +133,13 @@ public class PostService {
             info.put("Tình trạng", p.getConditionPercent());
         if (p.getSubjectCode() != null)
             info.put("Môn học", p.getSubjectCode());
+        if (p.getIsbnOrAuthor() != null && !p.getIsbnOrAuthor().isEmpty()) {
+            info.put("Tác giả", p.getIsbnOrAuthor());
+        }
+
+        if (p.getFaculty() != null && !p.getFaculty().isEmpty()) {
+            info.put("Khoa", p.getFaculty());
+        }
         return PostResponse.builder()
                 .id(p.getId())
                 .title(p.getTitle())
