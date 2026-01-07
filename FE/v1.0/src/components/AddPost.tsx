@@ -1,24 +1,53 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
-    Image, ScrollView, Modal, Alert, KeyboardAvoidingView, Platform
+    Image, ScrollView, Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { Post } from '../types';
 
-interface AddPostProps {
-    onPostSuccess: (post: Post) => void;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { BASE_URL, handleApiError } from '../utils/api';
 
-export default function AddPost({ onPostSuccess }: AddPostProps) {
-    const { colors, isNightMode } = useThemeColors();
+import * as Notifications from 'expo-notifications';
+
+
+
+const convertCategoryToEnum = (uiCategory: string) => {
+    switch (uiCategory) {
+        case 'Tài liệu': return 'TAI_LIEU';
+        case 'Dụng cụ': return 'DUNG_CU';
+        case 'Đồ mặc': return 'DO_MAC';
+        case 'Khác': return 'KHAC';
+        default: return 'KHAC';
+    }
+};
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+export default function AddPost() {
+    const dispatch = useDispatch();
+    const { colors } = useThemeColors();
+    
+    const user = useSelector((state: RootState) => state.user);
+
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-
     const [images, setImages] = useState<string[]>([]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [category, setCategory] = useState('Tài liệu');
     const [condition, setCondition] = useState('');
@@ -28,6 +57,30 @@ export default function AddPost({ onPostSuccess }: AddPostProps) {
 
     const categories = ['Tài liệu', 'Dụng cụ', 'Đồ mặc', 'Khác'];
 
+    React.useEffect(() => {
+        (async () => {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') {
+                alert('Bạn cần cấp quyền thông báo để nhận tin tức!');
+                return;
+            }
+
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#FF231F7C',
+                });
+            }
+        })();
+    }, []);
+    
     const pickImage = async () => {
         if (images.length >= 4) {
             Alert.alert("Thông báo", "Bạn chỉ được đăng tối đa 4 ảnh.");
@@ -67,43 +120,98 @@ export default function AddPost({ onPostSuccess }: AddPostProps) {
         }
     };
 
-    const handleConfirmPost = () => {
-        // --- VALIDATE ---
-        if (!title.trim()) {
-            Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề bài đăng.");
-            return;
-        }
-        if (!content.trim()) {
-            Alert.alert("Thiếu thông tin", "Vui lòng nhập nội dung bài đăng.");
-            return;
-        }
-        if (!condition) {
-            Alert.alert("Thiếu thông tin", "Vui lòng nhập tình trạng sản phẩm (0-100%).");
-            return;
-        }
+    const handleConfirmPost = async () => {
+    if (!title.trim()) {
+        Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề bài đăng.");
+        return;
+    }
+    if (!content.trim()) {
+        Alert.alert("Thiếu thông tin", "Vui lòng nhập nội dung bài đăng.");
+        return;
+    }
+    if (!condition) {
+        Alert.alert("Thiếu thông tin", "Vui lòng nhập tình trạng sản phẩm (0-100%).");
+        return;
+    }
 
-        const infoArray = [];
-        infoArray.push(`Danh mục: ${category}`);
-        infoArray.push(`Tình trạng: ${condition}%`);
-        if (author.trim()) infoArray.push(`Tác giả: ${author.trim()}`);
-        if (subject.trim()) infoArray.push(`Môn học: ${subject.trim()}`);
-        if (department.trim()) infoArray.push(`Khoa: ${department.trim()}`);
+    setIsSubmitting(true);
 
-        const newPostData: Post = {
-            id: Date.now().toString(),
-            user: 'Kevin Nguyễn',
-            title: title.trim(), // Sử dụng Title riêng
-            time: 'Vừa xong',
-            content: content.trim(), // Sử dụng Content riêng
-            tags: ['Trao đổi', category],
-            info: infoArray,
-            images: images
+    try {
+        const postPayload = {
+            title: title.trim(),
+            content: content.trim(),
+            price: 0,
+            
+            category: convertCategoryToEnum(category), 
+            
+            conditionPercent: `${condition}%`, 
+            isbnOrAuthor: author.trim(),
+            subjectCode: subject.trim(),
+            faculty: department.trim(),
+            
+            imageUrls: images, 
+            tags: ['Trao đổi', category]
         };
 
-        onPostSuccess(newPostData);
-        setShowConfirmModal(false);
+        const response = await fetch(`${BASE_URL}/api/posts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`,
+            },
+            body: JSON.stringify(postPayload),
+        });
 
-        // Reset form
+        await handleApiError(response);
+        try {
+                const notiPayload = {
+                    title: "Đăng bài thành công",
+                    message: `Bài viết "${title}" của bạn đã được đăng lên hệ thống.`,
+                    type: "SYSTEM"
+                };
+
+                await fetch(`${BASE_URL}/api/notifications/send-to-user/${user.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${user.token}`,
+                    },
+                    body: JSON.stringify(notiPayload),
+                });
+                
+            } catch (notiError) {
+                console.log("Lỗi tạo lịch sử thông báo:", notiError);
+            }
+        setShowConfirmModal(false);
+        resetForm();
+        
+        await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: "Đăng bài thành công! 🎉",
+                    body: `Bài viết "${title}" của bạn đã được đăng lên QuickSwap.`,
+                    sound: true,
+                },
+                trigger: null,
+            });
+
+        Alert.alert("Thành công", "Bài viết đã được đăng!", [
+            {
+                text: "OK",
+                onPress: () => {
+                    dispatch(setHomeActiveTab('home')); 
+                }
+            }
+        ]);
+
+    } catch (error: any) {
+        console.error("Post Error:", error);
+        Alert.alert("Lỗi", error.message || "Không thể đăng bài viết lúc này.");
+    } finally {
+        setIsSubmitting(false);
+    }
+};
+
+    const resetForm = () => {
         setTitle('');
         setContent('');
         setImages([]);
@@ -121,9 +229,9 @@ export default function AddPost({ onPostSuccess }: AddPostProps) {
         >
             <View style={styles.header}>
                 <View style={styles.userInfo}>
-                    <Image source={{ uri: 'https://i.pravatar.cc/150?img=26' }} style={styles.avatar} />
+                    <Image source={{ uri: user.avatarUrl || 'https://i.pravatar.cc/150?img=26' }} style={styles.avatar} />
                     <View>
-                        <Text style={[styles.userName, { color: colors.text }]}>Kevin Nguyễn</Text>
+                        <Text style={[styles.userName, { color: colors.text }]}>{user.name || 'Người dùng'}</Text>
                         <View style={styles.ratingRow}>
                             <Text style={[styles.ratingText, { color: colors.subText }]}>4,5</Text>
                             <Ionicons name="star" size={14} color="#FFD700" />
@@ -136,7 +244,8 @@ export default function AddPost({ onPostSuccess }: AddPostProps) {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-
+                 {/* ... (Phần UI Input giữ nguyên như cũ) ... */}
+                 
                 <View style={[styles.inputCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <TextInput
                         placeholder="Tiêu đề bài viết (Ngắn gọn)"
@@ -245,24 +354,32 @@ export default function AddPost({ onPostSuccess }: AddPostProps) {
                     </View>
 
                 </View>
-
                 <View style={{ height: 100 }} />
             </ScrollView>
 
             <Modal transparent visible={showConfirmModal} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                        <Ionicons name="help-circle-outline" size={50} color="#60A5FA" />
-                        <Text style={[styles.modalTitle, { color: colors.text }]}>Xác nhận đăng bài</Text>
-                        <Text style={[styles.modalSub, { color: colors.subText }]}>Thông tin sẽ được hiển thị công khai trên QuickSwap.</Text>
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowConfirmModal(false)}>
-                                <Text style={styles.cancelBtnText}>Hủy</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmPost}>
-                                <Text style={styles.confirmBtnText}>Đồng ý</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {isSubmitting ? (
+                            <View style={{ alignItems: 'center', padding: 20 }}>
+                                <ActivityIndicator size="large" color="#60A5FA" />
+                                <Text style={{ marginTop: 10, color: colors.text }}>Đang đăng bài...</Text>
+                            </View>
+                        ) : (
+                            <>
+                                <Ionicons name="help-circle-outline" size={50} color="#60A5FA" />
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>Xác nhận đăng bài</Text>
+                                <Text style={[styles.modalSub, { color: colors.subText }]}>Thông tin sẽ được hiển thị công khai trên QuickSwap.</Text>
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowConfirmModal(false)}>
+                                        <Text style={styles.cancelBtnText}>Hủy</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmPost}>
+                                        <Text style={styles.confirmBtnText}>Đồng ý</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>

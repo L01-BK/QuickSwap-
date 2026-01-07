@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface UserState {
+    id: string | number | null;
     name: string;
     username: string;
     handle: string;
@@ -14,6 +15,7 @@ interface UserState {
 }
 
 const initialState: UserState = {
+    id: null,
     name: 'Kevin Nguyễn',
     username: 'Nguyễn Văn Kevin',
     handle: '@hoclTcungnhau',

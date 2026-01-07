@@ -1,29 +1,79 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { BASE_URL, handleApiError } from '../utils/api';
 
 interface BookmarkProps {
-    savedPosts: Post[];
     onPostClick: (post: Post) => void;
     onNotificationClick: () => void;
-    toggleBookmark: (id: string | number) => void;
-    bookmarkedIds: (string | number)[];
 }
 
 export default function Bookmark({
-    savedPosts,
     onPostClick,
     onNotificationClick,
-    toggleBookmark,
-    bookmarkedIds
 }: BookmarkProps) {
     const { colors } = useThemeColors();
+    const user = useSelector((state: RootState) => state.user);
+    const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchSavedPosts = async () => {
+        if (!user.token) return;
+        setLoading(true);
+        try {
+            const response = await fetch(`${BASE_URL}/api/users/me/saved`, {
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+            const data = await handleApiError(response);
+
+            if (Array.isArray(data)) {
+                const mappedPosts: Post[] = data.map((p: any) => ({
+                    id: p.id,
+                    userId: p.user?.id,
+                    user: p.user?.name || 'Người dùng ẩn',
+                    title: p.title,
+                    time: p.time || 'Vừa xong',
+                    tags: p.tags || [],
+                    content: p.content,
+                    info: p.info ? Object.entries(p.info).map(([k, v]) => `${k}: ${v}`) : [],
+                    images: p.imageUrls || []
+                }));
+                setSavedPosts(mappedPosts);
+            }
+        } catch (error) {
+            console.error('Failed to fetch saved posts:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSavedPosts();
+    }, [user.token]);
+
+    const handleUnsave = async (id: string | number) => {
+        try {
+            const response = await fetch(`${BASE_URL}/api/posts/${id}/save`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+
+            if (response.ok) {
+                setSavedPosts(prev => prev.filter(p => p.id !== id));
+            } else {
+                handleApiError(response);
+            }
+        } catch (error) {
+            Alert.alert("Lỗi", "Không thể cập nhật trạng thái lưu.");
+        }
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
             <View style={styles.header}>
                 <Text style={[styles.logoText, { color: colors.text }]}>
                     Quick<Text style={styles.logoHighlight}>Swap</Text>
@@ -37,7 +87,9 @@ export default function Bookmark({
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <Text style={[styles.screenTitle, { color: colors.text }]}>BÀI ĐĂNG ĐÃ LƯU</Text>
 
-                {savedPosts.length === 0 ? (
+                {loading ? (
+                    <ActivityIndicator size="large" color="#60A5FA" style={{ marginTop: 20 }} />
+                ) : savedPosts.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Text style={[styles.emptyText, { color: colors.subText }]}>Chưa có bài đăng nào được lưu.</Text>
                     </View>
@@ -70,13 +122,7 @@ export default function Bookmark({
 
                                 <View style={styles.tagsContainer}>
                                     {post.tags.map((tag, index) => (
-                                        <View
-                                            key={index}
-                                            style={[
-                                                styles.tag,
-                                                tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue
-                                            ]}
-                                        >
+                                        <View key={index} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
                                             <Text style={styles.tagText}>{tag}</Text>
                                         </View>
                                     ))}
@@ -92,12 +138,12 @@ export default function Bookmark({
 
                                 <TouchableOpacity
                                     style={styles.footerIcon}
-                                    onPress={() => toggleBookmark(post.id)}
+                                    onPress={() => handleUnsave(post.id)}
                                 >
                                     <Ionicons
                                         name="bookmark"
                                         size={20}
-                                        color="#3B4161"
+                                        color="#60A5FA"
                                     />
                                 </TouchableOpacity>
 
@@ -118,41 +164,17 @@ export default function Bookmark({
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
     logoText: { fontSize: 28, fontWeight: 'bold' },
     logoHighlight: { color: '#60A5FA' },
-    notificationBadge: {
-        position: 'absolute', top: 2, right: 2,
-        width: 8, height: 8, borderRadius: 4, backgroundColor: 'red',
-    },
+    notificationBadge: { position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: 'red' },
     scrollContent: { paddingHorizontal: 20 },
-    screenTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginVertical: 20,
-    },
-    postCard: {
-        borderWidth: 1,
-        borderRadius: 12,
-        marginBottom: 20,
-        overflow: 'hidden'
-    },
+    screenTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 20 },
+    postCard: { borderWidth: 1, borderRadius: 12, marginBottom: 20, overflow: 'hidden' },
     postHeader: { padding: 12, borderBottomWidth: 1 },
     postUser: { fontWeight: 'bold', fontSize: 15 },
-    postImageContainer: {
-        width: '100%', height: 250,
-        alignItems: 'center', justifyContent: 'center',
-    },
-    postCardImage: {
-        width: '100%',
-        height: '100%',
-    },
+    postImageContainer: { width: '100%', height: 250, alignItems: 'center', justifyContent: 'center' },
+    postCardImage: { width: '100%', height: '100%' },
     postContent: { padding: 15 },
     postTitle: { fontSize: 18, fontWeight: '600', marginBottom: 5 },
     postTime: { fontSize: 13, marginBottom: 10 },
@@ -161,11 +183,7 @@ const styles = StyleSheet.create({
     tagBlue: { backgroundColor: '#60A5FA' },
     tagLightBlue: { backgroundColor: '#93C5FD' },
     tagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-    postFooter: {
-        flexDirection: 'row',
-        borderTopWidth: 1,
-        alignItems: 'center',
-    },
+    postFooter: { flexDirection: 'row', borderTopWidth: 1, alignItems: 'center' },
     footerIcon: { flex: 1, alignItems: 'center', paddingVertical: 12 },
     footerDivider: { width: 1, height: 20 },
     emptyContainer: { alignItems: 'center', marginTop: 50 },

@@ -41,3 +41,6 @@ yarn-error.*
 /android
 
 BE/run_log_final.txt
+
+google-services.json
+GoogleService-Info.plist
