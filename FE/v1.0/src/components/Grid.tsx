@@ -7,9 +7,14 @@ import {
     TouchableOpacity,
     ScrollView,
     Image,
-    Keyboard
+    Keyboard,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { BASE_URL, handleApiError } from '../utils/api';
 import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
 
@@ -21,8 +26,11 @@ interface GridProps {
 
 export default function Grid({ onNotificationClick, allPosts, onPostClick }: GridProps) {
     const { colors, isNightMode } = useThemeColors();
+    const user = useSelector((state: RootState) => state.user);
+
     const [searchText, setSearchText] = useState('');
     const [isSearching, setIsSearching] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
     const [searchTitle, setSearchTitle] = useState('');
 
@@ -33,60 +41,116 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
         { id: 2, title: 'Dụng cụ', icon: 'calculator', color: '#6B7280', bgColor: isNightMode ? '#374151' : '#E0F2FE' },
         { id: 3, title: 'Đồ mặc', icon: 'tshirt-crew', color: '#60A5FA', bgColor: isNightMode ? '#374151' : '#E0F2FE' },
         { id: 4, title: 'Khác', icon: 'package-variant-closed', color: '#A78BFA', bgColor: isNightMode ? '#374151' : '#E0F2FE' },
-    ]; // Thêm NightMode vào categories
-
+    ];
 
     const addToHistory = (text: string) => {
         if (!text.trim()) return;
-
         setSearchHistory(prev => {
             const newHistory = [text, ...prev.filter(item => item !== text)];
             return newHistory.slice(0, 2);
         });
     };
 
-    const handleSearch = (text: string) => {
-        setSearchText(text);
-        if (text.trim() === '') {
-            setIsSearching(false);
-            return;
-        }
+    const mapApiResponseToPost = (dataList: any[]): Post[] => {
+        return dataList.map((p: any) => ({
+            id: p.id,
+            userId: p.user?.id,
+            user: p.user?.name || 'Người dùng ẩn',
+            email: p.user?.email || null,
+            phone: p.user?.phoneNumber || p.user?.phone || null,
+            title: p.title,
+            time: p.time || 'Vừa xong',
+            tags: p.tags || [],
+            content: p.content,
+            info: p.info ? Object.entries(p.info).map(([k, v]) => `${k}: ${v}`) : [],
+            images: p.imageUrls || []
+        }));
+    };
 
-        const lowerKeyword = text.toLowerCase();
-        const results = allPosts.filter(post =>
-            post.title.toLowerCase().includes(lowerKeyword)
-        );
-
-        setFilteredPosts(results);
-        setSearchTitle(`Kết quả cho: "${text}"`);
+    const performSearch = async (keyword: string) => {
+        if (!keyword.trim()) return;
+        
+        setLoading(true);
         setIsSearching(true);
+        setSearchTitle(`Đang tìm kiếm: "${keyword}"...`);
+        setFilteredPosts([]);
+        try {
+            const response = await fetch(`${BASE_URL}/api/posts/search?keyword=${encodeURIComponent(keyword)}`, {
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+            const data = await handleApiError(response);
+            
+            const mappedPosts = mapApiResponseToPost(data);
+            setFilteredPosts(mappedPosts);
+            setSearchTitle(`Kết quả cho: "${keyword}"`);
+            
+        } catch (error) {
+            console.error('Search error:', error);
+            setSearchTitle(`Lỗi khi tìm kiếm`);
+            Alert.alert("Lỗi", "Không thể tìm kiếm lúc này.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const performFilter = async (categoryTitle: string) => {
+        setLoading(true);
+        setIsSearching(true);
+        setSearchTitle(`Đang lọc danh mục: "${categoryTitle}"...`);
+        setFilteredPosts([]);
+        setSearchText(categoryTitle);
+
+        try {
+            const response = await fetch(`${BASE_URL}/api/posts/filter?tag=${encodeURIComponent(categoryTitle)}`, {
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+            const data = await handleApiError(response);
+
+            let mappedPosts = mapApiResponseToPost(data);
+
+            if (mappedPosts.length > 0) {
+                mappedPosts = mappedPosts.filter(post => {
+                    return post.tags && post.tags.some(tag => 
+                        tag.toLowerCase().includes(categoryTitle.toLowerCase()) || 
+                        categoryTitle.toLowerCase().includes(tag.toLowerCase())
+                    );
+                });
+            }
+
+            setFilteredPosts(mappedPosts);
+            setSearchTitle(`Danh mục: ${categoryTitle}`);
+
+        } catch (error) {
+            console.error('Filter error:', error);
+            Alert.alert("Lỗi", "Không thể lọc danh mục lúc này.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const submitSearch = () => {
         if (searchText.trim()) {
             addToHistory(searchText);
             Keyboard.dismiss();
+            performSearch(searchText);
         }
     };
 
     const handleCategorySelect = (categoryTitle: string) => {
         addToHistory(categoryTitle);
+        performFilter(categoryTitle);
+    };
 
-        const results = allPosts.filter(post =>
-            post.tags.includes(categoryTitle) ||
-            (post.info && post.info.some(i => i.includes(categoryTitle)))
-        );
-
-        setSearchText(categoryTitle);
-        setFilteredPosts(results);
-        setSearchTitle(`Danh mục: ${categoryTitle}`);
-        setIsSearching(true);
+    const handleHistoryClick = (text: string) => {
+        setSearchText(text);
+        performSearch(text);
     };
 
     const clearSearch = () => {
         setSearchText('');
         setIsSearching(false);
         setFilteredPosts([]);
+        setLoading(false);
     };
 
     return (
@@ -109,10 +173,11 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                         placeholder="Tìm kiếm tiêu đề, danh mục..."
                         placeholderTextColor={colors.placeholder}
                         value={searchText}
-                        onChangeText={handleSearch}
+                        onChangeText={setSearchText}
                         onSubmitEditing={submitSearch}
+                        returnKeyType="search"
                     />
-                    {isSearching ? (
+                    {isSearching || searchText.length > 0 ? (
                         <TouchableOpacity onPress={clearSearch}>
                             <Ionicons name="close-circle" size={20} color={colors.placeholder} />
                         </TouchableOpacity>
@@ -127,10 +192,15 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                     <View style={styles.resultsContainer}>
                         <View style={styles.resultHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.text }]}>{searchTitle}</Text>
-                            <Text style={{ color: colors.subText }}>{filteredPosts.length} kết quả</Text>
+                            {!loading && <Text style={{ color: colors.subText }}>{filteredPosts.length} kết quả</Text>}
                         </View>
 
-                        {filteredPosts.length > 0 ? (
+                        {loading ? (
+                            <View style={{ marginTop: 50, alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color={colors.primary} />
+                                <Text style={{ color: colors.subText, marginTop: 10 }}>Đang tải dữ liệu...</Text>
+                            </View>
+                        ) : filteredPosts.length > 0 ? (
                             filteredPosts.map((post) => (
                                 <TouchableOpacity
                                     key={post.id}
@@ -188,7 +258,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                                 {searchHistory.map((item, index) => (
                                     <View key={index} style={styles.historyItem}>
                                         <Text style={[styles.historyText, { color: colors.subText }]}>{item}</Text>
-                                        <TouchableOpacity onPress={() => handleSearch(item)}>
+                                        <TouchableOpacity onPress={() => handleHistoryClick(item)}>
                                             <Ionicons name="arrow-forward" size={20} color={colors.placeholder} />
                                         </TouchableOpacity>
                                     </View>
