@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app2",
-    "slug": "app2",
+    "name": "QuickSwap",
+    "slug": "QuickSwap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

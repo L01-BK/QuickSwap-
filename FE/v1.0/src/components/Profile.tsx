@@ -33,7 +33,7 @@ export default function Profile() {
                     <View style={styles.userInfo}>
                         <View style={styles.avatarContainer}>
                             {/* Placeholder Avatar */}
-                            <View style={[styles.avatarPlaceholder, { backgroundColor: isNightMode ? '#333' : '#FF7F50' }]}>
+                            <View style={[styles.avatarPlaceholder, { backgroundColor: isNightMode ? '#333' : '#60A5FA' }]}>
                                 {/* Using an illustration-like placeholder if possible, or just the user image */}
                                 <Image
                                     style={styles.avatarImage}

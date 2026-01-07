@@ -16,6 +16,8 @@ import Profile from './Profile';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { Post } from '../types';
 
+import UserProfile from './UserProfile';
+
 interface HomeProps {
     onPostClick: (post: any) => void;
     onNotificationClick: () => void;
@@ -34,6 +36,8 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     };
 
     const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
+
+    const [viewingUser, setViewingUser] = useState<{id: string | number, name: string} | null>(null);
 
     const fetchUnreadNotifications = async () => {
         if (!user.token) return;
@@ -176,33 +180,25 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         const options: AlertButton[] = [];
 
         if (isOwner) {
-            options.push({
+             options.push({
                 text: 'Xóa bài đăng',
-                style: 'destructive' as 'destructive',
+                style: 'destructive',
+                onPress: () => { /* ... */ }
+            });
+        } else {
+            options.push({
+                text: 'Xem tài khoản người dùng',
                 onPress: () => {
-                    Alert.alert(
-                        "Xác nhận xóa",
-                        "Bạn có chắc chắn muốn xóa bài viết này không?",
-                        [
-                            { text: "Hủy", style: "cancel" as 'cancel' },
-                            { text: "Xóa", style: "destructive" as 'destructive', onPress: () => handleDeletePost(item.id) }
-                        ]
-                    );
+                    setViewingUser({
+                        id: item.userId,
+                        name: item.user
+                    });
                 }
             });
         }
 
-        options.push({
-            text: 'Đánh giá người dùng',
-            onPress: () => Alert.alert("Thông báo", `Chức năng đánh giá user ${item.user} đang phát triển.`)
-        });
-
-        options.push({
-            text: 'Hủy',
-            style: 'cancel' as 'cancel'
-        });
-
-        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết của bạn" : `Bài viết của ${item.user}`, options);
+        options.push({ text: 'Hủy', style: 'cancel' });
+        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
     };
 
     useEffect(() => {
@@ -212,6 +208,15 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             fetchPosts(0);
         }
     }, [user.token, activeTab]);
+    if (viewingUser) {
+        return (
+            <UserProfile 
+                userId={viewingUser.id} 
+                initialName={viewingUser.name}
+                onBack={() => setViewingUser(null)}
+            />
+        );
+    }
 
     const loadMorePosts = () => {
         if (!loading && hasMore) {
@@ -296,18 +301,8 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         </TouchableOpacity>
     );
 
-    const renderHeader = () => (
+    const renderScrollableHeader = () => (
         <View>
-            <View style={styles.header}>
-                <Text style={[styles.logoText, { color: colors.text }]}>
-                    Quick<Text style={styles.logoHighlight}>Swap</Text>
-                </Text>
-                <TouchableOpacity onPress={onNotificationClick}>
-                    <Ionicons name="notifications" size={24} color={colors.icon} />
-                    {/* --- SỬA LOGIC HIỂN THỊ BADGE --- */}
-                    {unreadCount > 0 && <View style={styles.notificationBadge} />}
-                </TouchableOpacity>
-            </View>
             <View style={styles.greetingContainer}>
                 <Text style={[styles.greetingText, { color: colors.subText }]}>Chào mừng quay trở lại,</Text>
                 <Text style={[styles.userNameText, { color: colors.text }]}>{user.name || user.username}.</Text>
@@ -340,21 +335,35 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             case 'home':
             default:
                 return (
-                    <View style={{ flex: 1, paddingHorizontal: 20 }}>
-                        <FlatList
-                            data={allPosts}
-                            keyExtractor={(item) => item.id.toString()}
-                            renderItem={renderPostItem}
-                            ListHeaderComponent={renderHeader}
-                            ListFooterComponent={
-                                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
-                                    {loading && <ActivityIndicator size="large" color={colors.primary} />}
-                                </View>
-                            }
-                            onEndReached={loadMorePosts}
-                            onEndReachedThreshold={0.5}
-                            showsVerticalScrollIndicator={false}
-                        />
+                    <View style={{ flex: 1 }}> 
+                        {/* Fixed Header placed OUTSIDE of FlatList */}
+                        <View style={styles.header}>
+                            <Text style={[styles.logoText, { color: colors.text }]}>
+                                Quick<Text style={styles.logoHighlight}>Swap</Text>
+                            </Text>
+                            <TouchableOpacity onPress={onNotificationClick}>
+                                <Ionicons name="notifications" size={24} color={colors.icon} />
+                                {unreadCount > 0 && <View style={styles.notificationBadge} />}
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                            <FlatList
+                                contentContainerStyle={{ paddingHorizontal: 20 }}
+                                data={allPosts}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={renderPostItem}
+                                ListHeaderComponent={renderScrollableHeader}
+                                ListFooterComponent={
+                                    <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                                        {loading && <ActivityIndicator size="large" color={colors.primary} />}
+                                    </View>
+                                }
+                                onEndReached={loadMorePosts}
+                                onEndReachedThreshold={0.5}
+                                showsVerticalScrollIndicator={false}
+                            />
+                        </View>
                     </View>
                 );
         }

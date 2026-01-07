@@ -229,7 +229,7 @@ export default function AddPost() {
         >
             <View style={styles.header}>
                 <View style={styles.userInfo}>
-                    <Image source={{ uri: user.avatarUrl || 'https://i.pravatar.cc/150?img=26' }} style={styles.avatar} />
+                    <Image source={{ uri: user.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }} style={styles.avatar} />
                     <View>
                         <Text style={[styles.userName, { color: colors.text }]}>{user.name || 'Người dùng'}</Text>
                         <View style={styles.ratingRow}>
