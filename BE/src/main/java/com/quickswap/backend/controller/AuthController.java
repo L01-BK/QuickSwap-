@@ -6,6 +6,7 @@ import com.quickswap.backend.service.UserService;
 import com.quickswap.backend.service.PasswordResetService;
 import com.quickswap.backend.dto.ForgotPasswordRequest;
 import com.quickswap.backend.dto.ResetPasswordRequest;
+import com.quickswap.backend.dto.VerifyOtpRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,5 +41,11 @@ public class AuthController {
     public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
         passwordResetService.verifyAndReset(request.getEmail(), request.getOtp(), request.getNewPassword());
         return ResponseEntity.ok("Mật khẩu đã được đặt lại thành công.");
+    }
+
+    @PostMapping("/check-otp")
+    public ResponseEntity<Boolean> checkOtp(@RequestBody VerifyOtpRequest request) {
+        boolean valid = passwordResetService.checkOtpValid(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(valid);
     }
 }
