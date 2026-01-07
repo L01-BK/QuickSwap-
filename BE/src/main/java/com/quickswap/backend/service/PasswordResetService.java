@@ -67,4 +67,20 @@ public class PasswordResetService {
 
         tokenRepository.delete(token);
     }
+
+    public boolean checkOtpValid(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
+        if (user == null)
+            return false;
+        PasswordResetToken token = tokenRepository.findByUserAndToken(user, otp)
+                .orElse(null);
+        if (token == null)
+            return false;
+        if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
+            tokenRepository.delete(token);
+            return false;
+        }
+        return true;
+    }
 }
