@@ -5,8 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { navigateTo, setHomeActiveTab, MainTab } from '../store/reducer/navigationSlice';
 import { updateUser } from '../store/reducer/userSlice';
-import { setHomeActiveTab, MainTab } from '../store/reducer/navigationSlice';
 import { BASE_URL, handleApiError } from '../utils/api';
 
 import Grid from './Grid';
@@ -92,7 +92,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                     id: p.id,
                     userId: p.user?.id,
                     user: p.user?.name || 'Người dùng ẩn',
-                    email: p.user?.email || null, 
+                    email: p.user?.email || null,
                     phone: p.user?.phoneNumber || p.user?.phone || null,
                     title: p.title,
                     time: p.time || 'Vừa xong',
@@ -192,10 +192,15 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         }
     };
 
+    const addNewPost = (newPost: any) => {
+        setAllPosts(prev => [newPost, ...prev]);
+        dispatch(setHomeActiveTab('home'));
+    };
+
     const toggleBookmark = async (id: string | number) => {
         const isSaved = bookmarkedIds.includes(id);
-        
-        setBookmarkedIds(prev => 
+
+        setBookmarkedIds(prev =>
             isSaved ? prev.filter(itemId => itemId !== id) : [...prev, id]
         );
 
@@ -207,14 +212,14 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             });
 
             if (!response.ok) {
-                setBookmarkedIds(prev => 
+                setBookmarkedIds(prev =>
                     isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
                 );
                 handleApiError(response);
             }
         } catch (error) {
             console.error('Bookmark error:', error);
-            setBookmarkedIds(prev => 
+            setBookmarkedIds(prev =>
                 isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
             );
         }
@@ -329,23 +334,69 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             {renderContent()}
             <View style={styles.bottomTabContainer}>
                 <View style={[styles.bottomTab, { backgroundColor: colors.primary }]}>
-                    <TouchableOpacity style={[styles.tabItem, activeTab === 'home' && styles.activeTab]} onPress={() => handleSwitchTab('home')}>
-                        <Ionicons name="home-outline" size={22} color="#fff" />
-                        {activeTab === 'home' && <Text style={styles.activeText}>Trang chủ</Text>}
+
+                    {/* Home */}
+                    <TouchableOpacity
+                        style={[
+                            styles.tabItem,
+                            activeTab === 'home' && styles.activeTab
+                        ]}
+                        onPress={() => dispatch(setHomeActiveTab('home'))}
+                    >
+                        <Ionicons
+                            name="home-outline"
+                            size={22}
+                            color="#fff"
+                        />
+                        {activeTab === 'home' && (
+                            <Text style={styles.activeText}>Trang chủ</Text>
+                        )}
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.tabItem, activeTab === 'grid' && styles.activeTab]} onPress={() => handleSwitchTab('grid')}>
+
+                    {/* Grid */}
+                    <TouchableOpacity
+                        style={[
+                            styles.tabItem,
+                            activeTab === 'grid' && styles.activeTab
+                        ]}
+                        onPress={() => dispatch(setHomeActiveTab('grid'))}
+                    >
                         <Ionicons name="grid-outline" size={22} color="#fff" />
                         {activeTab === 'grid' && <Text style={styles.activeText}>Danh mục</Text>}
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.tabItem, activeTab === 'add' && styles.activeTab]} onPress={() => handleSwitchTab('add')}>
+
+                    {/* Add */}
+                    <TouchableOpacity
+                        style={[
+                            styles.tabItem,
+                            activeTab === 'add' && styles.activeTab
+                        ]}
+                        onPress={() => dispatch(setHomeActiveTab('add'))}
+                    >
                         <Ionicons name="add-circle-outline" size={22} color="#fff" />
                         {activeTab === 'add' && <Text style={styles.activeText}>Đăng bài</Text>}
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.tabItem, activeTab === 'bookmark' && styles.activeTab]} onPress={() => handleSwitchTab('bookmark')}>
+
+                    {/* Bookmark */}
+                    <TouchableOpacity
+                        style={[
+                            styles.tabItem,
+                            activeTab === 'bookmark' && styles.activeTab
+                        ]}
+                        onPress={() => dispatch(setHomeActiveTab('bookmark'))}
+                    >
                         <Ionicons name="bookmark-outline" size={22} color="#fff" />
                         {activeTab === 'bookmark' && <Text style={styles.activeText}>Đã lưu</Text>}
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.tabItem, activeTab === 'profile' && styles.activeTab]} onPress={() => handleSwitchTab('profile')}>
+
+                    {/* Profile */}
+                    <TouchableOpacity
+                        style={[
+                            styles.tabItem,
+                            activeTab === 'profile' && styles.activeTab
+                        ]}
+                        onPress={() => dispatch(setHomeActiveTab('profile'))}
+                    >
                         <Ionicons name="person-outline" size={22} color="#fff" />
                         {activeTab === 'profile' && <Text style={styles.activeText}>Cá nhân</Text>}
                     </TouchableOpacity>

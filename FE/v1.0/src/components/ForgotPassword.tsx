@@ -16,24 +16,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDispatch } from 'react-redux';
-import { navigateTo, setOtpContext } from '../store/reducer/navigationSlice';
-
+import { navigateTo, setOtpContext, setResetEmail } from '../store/reducer/navigationSlice';
+import { forgotPassword } from '../services/authService';
 
 export default function ForgotPassword() {
     const dispatch = useDispatch();
+    const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const title = "QUÊN MẬT KHẨU";
+    const subtitle = "Nhập tài khoản email của bạn để đặt lại mật khẩu.";
 
     const onNext = () => {
         dispatch(setOtpContext('forgot-password'));
         dispatch(navigateTo('otp'));
     };
     const onCancel = () => dispatch(navigateTo('login'));
-    const [email, setEmail] = useState('');
-    const [emailError, setEmailError] = useState('');
 
-    const title = "QUÊN MẬT KHẨU";
-    const subtitle = "Nhập tài khoản email của bạn để đặt lại mật khẩu.";
-
-    const handleNext = () => {
+    const handleNext = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email) {
             setEmailError('Vui lòng nhập email');
@@ -44,7 +45,19 @@ export default function ForgotPassword() {
             return;
         }
         setEmailError('');
-        onNext();
+
+
+        try {
+            // Optimistic Update: Navigate strictly immediately
+            forgotPassword(email.trim()).catch(err => {
+                console.log("Background email send error:", err);
+            });
+
+            dispatch(setResetEmail(email.trim()));
+            onNext();
+        } catch (error: any) {
+            setEmailError(error.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+        }
     };
 
     return (
