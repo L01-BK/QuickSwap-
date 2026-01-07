@@ -37,7 +37,7 @@ export default function Profile() {
                                 {/* Using an illustration-like placeholder if possible, or just the user image */}
                                 <Image
                                     style={styles.avatarImage}
-                                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }} // Example avatar
+                                    source={{ uri: user.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
                                 />
                             </View>
                         </View>
