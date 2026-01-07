@@ -23,6 +23,7 @@ E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\ResetPasswordRequest.java
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UpdateProfileRequest.java
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\UserResponse.java
+E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\dto\VerifyOtpRequest.java
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\Category.java
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\NotificationHistory.java
 E:\Study\BTL\AppMobile\btl\QuickSwap-\BE\src\main\java\com\quickswap\backend\entity\PasswordResetToken.java
