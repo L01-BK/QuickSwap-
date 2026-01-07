@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,7 +9,8 @@ import {
     Image,
     Keyboard,
     ActivityIndicator,
-    Alert
+    Alert,
+    AlertButton
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
@@ -22,9 +23,10 @@ interface GridProps {
     onNotificationClick: () => void;
     allPosts: Post[];
     onPostClick: (post: Post) => void;
+    unreadCount: number;
 }
 
-export default function Grid({ onNotificationClick, allPosts, onPostClick }: GridProps) {
+export default function Grid({ onNotificationClick, allPosts, onPostClick, unreadCount }: GridProps) {
     const { colors, isNightMode } = useThemeColors();
     const user = useSelector((state: RootState) => state.user);
 
@@ -34,7 +36,29 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
     const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
     const [searchTitle, setSearchTitle] = useState('');
 
-    const [searchHistory, setSearchHistory] = useState<string[]>(['Sách giải tích 1', 'Máy tính cầm tay']);
+    const [searchHistory, setSearchHistory] = useState<string[]>([]);
+    
+    const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
+
+    useEffect(() => {
+        const fetchSavedIds = async () => {
+            if (user.token) {
+                try {
+                    const response = await fetch(`${BASE_URL}/api/users/me/saved`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` },
+                    });
+                    const data = await handleApiError(response);
+                    if (Array.isArray(data)) {
+                        const ids = data.map((item: any) => item.id);
+                        setBookmarkedIds(ids);
+                    }
+                } catch (error) {
+                    console.log('Failed to fetch saved list for ids in Grid:', error);
+                }
+            }
+        };
+        fetchSavedIds();
+    }, [user.token]);
 
     const categories = [
         { id: 1, title: 'Tài liệu', icon: 'file-document', color: '#FFD700', bgColor: isNightMode ? '#374151' : '#E0F2FE' },
@@ -66,6 +90,98 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
             images: p.imageUrls || []
         }));
     };
+    
+    const handleShowContact = (item: any) => {
+        const emailInfo = item.email ? item.email : "Chưa cập nhật";
+        const phoneInfo = item.phone ? item.phone : "Chưa cập nhật";
+
+        Alert.alert(
+            "Thông tin liên hệ",
+            `Người đăng: ${item.user}\n\n📧 Email: ${emailInfo}\n📞 SĐT: ${phoneInfo}`,
+            [{ text: "Đóng", style: "cancel" }]
+        );
+    };
+
+    const toggleBookmark = async (id: string | number) => {
+        const isSaved = bookmarkedIds.includes(id);
+        
+        setBookmarkedIds(prev => 
+            isSaved ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        );
+
+        try {
+            const method = isSaved ? 'DELETE' : 'POST';
+            const response = await fetch(`${BASE_URL}/api/posts/${id}/save`, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+
+            if (!response.ok) {
+                setBookmarkedIds(prev => 
+                    isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
+                );
+                handleApiError(response);
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            setBookmarkedIds(prev => 
+                isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
+            );
+        }
+    };
+
+    const handleDeletePost = async (postId: string | number) => {
+        try {
+            const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+
+            if (response.ok) {
+                setFilteredPosts(prev => prev.filter(p => p.id !== postId));
+                Alert.alert("Thành công", "Đã xóa bài viết.");
+            } else {
+                handleApiError(response);
+            }
+        } catch (error) {
+            Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
+        }
+    };
+
+    const handleShowOptions = (item: Post) => {
+        const isOwner = user.id === item.userId;
+        const options: AlertButton[] = [];
+
+        if (isOwner) {
+            options.push({
+                text: 'Xóa bài đăng',
+                style: 'destructive' as 'destructive',
+                onPress: () => {
+                    Alert.alert(
+                        "Xác nhận xóa",
+                        "Bạn có chắc chắn muốn xóa bài viết này không?",
+                        [
+                            { text: "Hủy", style: "cancel" as 'cancel' },
+                            { text: "Xóa", style: "destructive" as 'destructive', onPress: () => handleDeletePost(item.id) }
+                        ]
+                    );
+                }
+            });
+        }
+
+        options.push({
+            text: 'Đánh giá người dùng',
+            onPress: () => Alert.alert("Thông báo", `Chức năng đánh giá user ${item.user} đang phát triển.`)
+        });
+
+        options.push({
+            text: 'Hủy',
+            style: 'cancel' as 'cancel'
+        });
+
+        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết của bạn" : `Bài viết của ${item.user}`, options);
+    };
+
 
     const performSearch = async (keyword: string) => {
         if (!keyword.trim()) return;
@@ -161,7 +277,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                 </Text>
                 <TouchableOpacity onPress={onNotificationClick}>
                     <Ionicons name="notifications" size={24} color={colors.icon} />
-                    <View style={styles.notificationBadge} />
+                    {unreadCount > 0 && <View style={styles.notificationBadge} />}
                 </TouchableOpacity>
             </View>
 
@@ -207,7 +323,11 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                                     style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                                     onPress={() => onPostClick(post)}
                                 >
-                                    <View style={styles.postHeader}><Text style={[styles.postUser, { color: colors.text }]}>{post.user}</Text></View>
+                                    {/* --- 3. Giao diện bài viết giống hệt Home --- */}
+                                    <View style={styles.postHeader}>
+                                        <Text style={[styles.postUser, { color: colors.text }]}>{post.user}</Text>
+                                    </View>
+                                    
                                     <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
                                         {post.images && post.images.length > 0 ? (
                                             <Image source={{ uri: post.images[0] }} style={styles.postCardImage} resizeMode="cover" />
@@ -215,6 +335,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                                             <Ionicons name="image-outline" size={60} color={colors.subText} />
                                         )}
                                     </View>
+                                    
                                     <View style={styles.postContent}>
                                         <Text style={[styles.postTitle, { color: colors.text }]}>{post.title}</Text>
                                         <Text style={[styles.postTime, { color: colors.subText }]}>{post.time}</Text>
@@ -225,6 +346,23 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                                                 </View>
                                             ))}
                                         </View>
+                                    </View>
+
+                                    {/* Footer giống Home: Contact, Bookmark, Options */}
+                                    <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
+                                        <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowContact(post)}>
+                                            <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.footerIcon} onPress={() => toggleBookmark(post.id)}>
+                                            <Ionicons
+                                                name={bookmarkedIds.includes(post.id) ? "bookmark" : "bookmark-outline"}
+                                                size={20}
+                                                color={bookmarkedIds.includes(post.id) ? "#60A5FA" : colors.subText}
+                                            />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowOptions(post)}>
+                                            <Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} />
+                                        </TouchableOpacity>
                                     </View>
                                 </TouchableOpacity>
                             ))
@@ -267,10 +405,11 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick }: Gri
                         )}
 
                         <View style={styles.illustrationContainer}>
-                            <View style={[styles.phoneFrame, { borderColor: colors.border }]}>
-                                <Ionicons name="search" size={80} color={colors.primary} style={styles.illustIcon} />
-                                <View style={[styles.personMockup, { backgroundColor: isNightMode ? '#4B5563' : '#374151' }]} />
-                            </View>
+                            <Image 
+                                source={require('../../assets/images/search.png')} 
+                                style={styles.illustrationImage}
+                                resizeMode="contain"
+                            />
                         </View>
                     </>
                 )}
@@ -302,10 +441,16 @@ const styles = StyleSheet.create({
     historyItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
     historyText: { fontSize: 15 },
 
-    illustrationContainer: { alignItems: 'center', marginTop: 40 },
-    phoneFrame: { width: 180, height: 250, borderWidth: 1, borderRadius: 30, justifyContent: 'center', alignItems: 'center', position: 'relative' },
-    illustIcon: { opacity: 0.5 },
-    personMockup: { position: 'absolute', bottom: 20, left: -20, width: 60, height: 120, borderRadius: 10 },
+    illustrationContainer: { 
+        alignItems: 'center', 
+        marginTop: 40,
+        marginBottom: 20
+    },
+    
+    illustrationImage: {
+        width: 300, 
+        height: 250,
+    },
 
     resultsContainer: { marginTop: 10 },
     resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 15 },
@@ -314,7 +459,7 @@ const styles = StyleSheet.create({
     postCard: { borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 20 },
     postHeader: { marginBottom: 10 },
     postUser: { fontWeight: 'bold', fontSize: 16 },
-    postImageContainer: { width: '100%', height: 180, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
+    postImageContainer: { width: '100%', height: 200, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
     postCardImage: { width: '100%', height: '100%' },
     postContent: { marginBottom: 10 },
     postTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
@@ -324,4 +469,7 @@ const styles = StyleSheet.create({
     tagBlue: { backgroundColor: '#60A5FA' },
     tagLightBlue: { backgroundColor: '#93C5FD' },
     tagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+    
+    postFooter: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1 },
+    footerIcon: { padding: 5 },
 });

@@ -27,11 +27,40 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const user = useSelector((state: RootState) => state.user);
     const activeTab = useSelector((state: RootState) => state.navigation.homeActiveTab);
 
+    const [unreadCount, setUnreadCount] = useState(0);
+
     const handleSwitchTab = (tab: MainTab) => {
         dispatch(setHomeActiveTab(tab));
     };
 
     const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
+
+    const fetchUnreadNotifications = async () => {
+        if (!user.token) return;
+        try {
+            const response = await fetch(`${BASE_URL}/api/notifications/me`, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+            });
+            const data = await handleApiError(response);
+            
+            const rawList = Array.isArray(data) ? data : (data.content || []);
+            
+            const count = rawList.filter((item: any) => {
+                const isRead = item.read !== undefined ? item.read : item.isRead;
+                return !isRead;
+            }).length;
+
+            setUnreadCount(count);
+        } catch (error) {
+            console.log('Failed to fetch unread count:', error);
+        }
+    };
+    useEffect(() => {
+        fetchUnreadNotifications();
+        
+        const interval = setInterval(fetchUnreadNotifications, 5000);
+        return () => clearInterval(interval);
+    }, [user.token]);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -270,7 +299,8 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 </Text>
                 <TouchableOpacity onPress={onNotificationClick}>
                     <Ionicons name="notifications" size={24} color={colors.icon} />
-                    <View style={styles.notificationBadge} />
+                    {/* --- SỬA LOGIC HIỂN THỊ BADGE --- */}
+                    {unreadCount > 0 && <View style={styles.notificationBadge} />}
                 </TouchableOpacity>
             </View>
             <View style={styles.greetingContainer}>
@@ -289,7 +319,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const renderContent = () => {
         switch (activeTab) {
             case 'grid':
-                return <Grid onNotificationClick={onNotificationClick} allPosts={allPosts} onPostClick={onPostClick} />;
+                return <Grid onNotificationClick={onNotificationClick} allPosts={allPosts} onPostClick={onPostClick} unreadCount={unreadCount}/>;
             case 'add':
                 return <AddPost />;
             case 'bookmark':
@@ -297,6 +327,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                     <Bookmark
                         onPostClick={onPostClick}
                         onNotificationClick={onNotificationClick}
+                        unreadCount={unreadCount}
                     />
                 );
             case 'profile':

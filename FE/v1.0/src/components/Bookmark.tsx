@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, AlertButton, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
@@ -10,11 +10,13 @@ import { BASE_URL, handleApiError } from '../utils/api';
 interface BookmarkProps {
     onPostClick: (post: Post) => void;
     onNotificationClick: () => void;
+    unreadCount: number;
 }
 
 export default function Bookmark({
     onPostClick,
     onNotificationClick,
+    unreadCount
 }: BookmarkProps) {
     const { colors } = useThemeColors();
     const user = useSelector((state: RootState) => state.user);
@@ -35,6 +37,8 @@ export default function Bookmark({
                     id: p.id,
                     userId: p.user?.id,
                     user: p.user?.name || 'Người dùng ẩn',
+                    email: p.user?.email || null,
+                    phone: p.user?.phoneNumber || p.user?.phone || null,
                     title: p.title,
                     time: p.time || 'Vừa xong',
                     tags: p.tags || [],
@@ -56,21 +60,110 @@ export default function Bookmark({
     }, [user.token]);
 
     const handleUnsave = async (id: string | number) => {
-        try {
-            const response = await fetch(`${BASE_URL}/api/posts/${id}/save`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${user.token}` },
-            });
+        Alert.alert(
+            "Bỏ lưu",
+            "Bạn có muốn bỏ lưu bài viết này không?",
+            [
+                { text: "Hủy", style: "cancel" },
+                {
+                    text: "Đồng ý",
+                    onPress: async () => {
+                        try {
+                            const response = await fetch(`${BASE_URL}/api/posts/${id}/save`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${user.token}` },
+                            });
 
-            if (response.ok) {
-                setSavedPosts(prev => prev.filter(p => p.id !== id));
-            } else {
-                handleApiError(response);
-            }
-        } catch (error) {
-            Alert.alert("Lỗi", "Không thể cập nhật trạng thái lưu.");
-        }
+                            if (response.ok) {
+                                setSavedPosts(prev => prev.filter(p => p.id !== id));
+                            } else {
+                                handleApiError(response);
+                            }
+                        } catch (error) {
+                            Alert.alert("Lỗi", "Không thể cập nhật trạng thái lưu.");
+                        }
+                    }
+                }
+            ]
+        );
     };
+
+    const handleShowContact = (item: Post) => {
+        const emailInfo = item.email ? item.email : "Chưa cập nhật";
+        const phoneInfo = item.phone ? item.phone : "Chưa cập nhật";
+
+        Alert.alert(
+            "Thông tin liên hệ",
+            `Người đăng: ${item.user}\n\n📧 Email: ${emailInfo}\n📞 SĐT: ${phoneInfo}`,
+            [{ text: "Đóng", style: "cancel" }]
+        );
+    };
+
+    const handleShowOptions = (item: Post) => {
+        const options: AlertButton[] = [];
+        
+        options.push({
+            text: 'Đánh giá người dùng',
+            onPress: () => Alert.alert("Thông báo", `Chức năng đánh giá user ${item.user} đang phát triển.`)
+        });
+
+        options.push({
+            text: 'Hủy',
+            style: 'cancel'
+        });
+
+        Alert.alert("Tùy chọn", `Bài viết của ${item.user}`, options);
+    };
+
+    const renderPostItem = ({ item }: { item: Post }) => (
+        <TouchableOpacity
+            style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onPostClick(item)}
+        >
+            <View style={styles.postHeader}>
+                <Text style={[styles.postUser, { color: colors.text }]}>{item.user}</Text>
+            </View>
+            
+            <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
+                {item.images && item.images.length > 0 ? (
+                    <Image source={{ uri: item.images[0] }} style={styles.postCardImage} resizeMode="cover" />
+                ) : (
+                    <Ionicons name="image-outline" size={60} color={colors.subText} />
+                )}
+            </View>
+            
+            <View style={styles.postContent}>
+                <Text style={[styles.postTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.postTime, { color: colors.subText }]}>{item.time}</Text>
+                <View style={styles.tagsContainer}>
+                    {item.tags.map((tag, idx) => (
+                        <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
+                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowContact(item)}>
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
+                </TouchableOpacity>
+                
+                {/* Nút Bookmark luôn sáng màu vì đây là trang Bookmark, bấm vào để Bỏ lưu */}
+                <TouchableOpacity style={styles.footerIcon} onPress={() => handleUnsave(item.id)}>
+                    <Ionicons
+                        name="bookmark"
+                        size={20}
+                        color="#60A5FA" 
+                    />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowOptions(item)}>
+                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} />
+                </TouchableOpacity>
+            </View>
+        </TouchableOpacity>
+    );
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -80,11 +173,11 @@ export default function Bookmark({
                 </Text>
                 <TouchableOpacity onPress={onNotificationClick}>
                     <Ionicons name="notifications" size={24} color={colors.icon} />
-                    <View style={styles.notificationBadge} />
+                    {unreadCount > 0 && <View style={styles.notificationBadge} />}
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <View style={{ flex: 1, paddingHorizontal: 20 }}>
                 <Text style={[styles.screenTitle, { color: colors.text }]}>BÀI ĐĂNG ĐÃ LƯU</Text>
 
                 {loading ? (
@@ -94,70 +187,15 @@ export default function Bookmark({
                         <Text style={[styles.emptyText, { color: colors.subText }]}>Chưa có bài đăng nào được lưu.</Text>
                     </View>
                 ) : (
-                    savedPosts.map((post) => (
-                        <TouchableOpacity
-                            key={post.id}
-                            style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                            onPress={() => onPostClick(post)}
-                        >
-                            <View style={[styles.postHeader, { borderBottomColor: colors.border }]}>
-                                <Text style={[styles.postUser, { color: colors.text }]}>{post.user}</Text>
-                            </View>
-
-                            <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
-                                {post.images && post.images.length > 0 ? (
-                                    <Image
-                                        source={{ uri: post.images[0] }}
-                                        style={styles.postCardImage}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
-                                    <Ionicons name="image-outline" size={80} color={colors.subText} />
-                                )}
-                            </View>
-
-                            <View style={styles.postContent}>
-                                <Text style={[styles.postTitle, { color: colors.text }]}>{post.title}</Text>
-                                <Text style={[styles.postTime, { color: colors.subText }]}>{post.time}</Text>
-
-                                <View style={styles.tagsContainer}>
-                                    {post.tags.map((tag, index) => (
-                                        <View key={index} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
-                                            <Text style={styles.tagText}>{tag}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-
-                            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
-                                <TouchableOpacity style={styles.footerIcon}>
-                                    <Ionicons name="chatbubble-outline" size={20} color={colors.icon} />
-                                </TouchableOpacity>
-
-                                <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-
-                                <TouchableOpacity
-                                    style={styles.footerIcon}
-                                    onPress={() => handleUnsave(post.id)}
-                                >
-                                    <Ionicons
-                                        name="bookmark"
-                                        size={20}
-                                        color="#60A5FA"
-                                    />
-                                </TouchableOpacity>
-
-                                <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-
-                                <TouchableOpacity style={styles.footerIcon}>
-                                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.icon} />
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableOpacity>
-                    ))
+                    <FlatList
+                        data={savedPosts}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={renderPostItem}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 100 }}
+                    />
                 )}
-                <View style={{ height: 100 }} />
-            </ScrollView>
+            </View>
         </View>
     );
 }
@@ -165,27 +203,28 @@ export default function Bookmark({
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
-    logoText: { fontSize: 28, fontWeight: 'bold' },
+    logoText: { fontSize: 24, fontWeight: 'bold' },
     logoHighlight: { color: '#60A5FA' },
-    notificationBadge: { position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: 'red' },
-    scrollContent: { paddingHorizontal: 20 },
-    screenTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 20 },
-    postCard: { borderWidth: 1, borderRadius: 12, marginBottom: 20, overflow: 'hidden' },
-    postHeader: { padding: 12, borderBottomWidth: 1 },
-    postUser: { fontWeight: 'bold', fontSize: 15 },
-    postImageContainer: { width: '100%', height: 250, alignItems: 'center', justifyContent: 'center' },
+    notificationBadge: { position: 'absolute', top: 0, right: 0, width: 8, height: 8, borderRadius: 4, backgroundColor: 'red' },
+    
+    screenTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 15 },
+    
+    postCard: { borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 20 },
+    postHeader: { marginBottom: 10 },
+    postUser: { fontWeight: 'bold', fontSize: 16 },
+    postImageContainer: { width: '100%', height: 200, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
     postCardImage: { width: '100%', height: '100%' },
-    postContent: { padding: 15 },
-    postTitle: { fontSize: 18, fontWeight: '600', marginBottom: 5 },
-    postTime: { fontSize: 13, marginBottom: 10 },
+    postContent: { marginBottom: 10 },
+    postTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+    postTime: { fontSize: 12, marginBottom: 10 },
     tagsContainer: { flexDirection: 'row' },
-    tag: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 10, marginRight: 8 },
+    tag: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, marginRight: 8 },
     tagBlue: { backgroundColor: '#60A5FA' },
     tagLightBlue: { backgroundColor: '#93C5FD' },
     tagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-    postFooter: { flexDirection: 'row', borderTopWidth: 1, alignItems: 'center' },
-    footerIcon: { flex: 1, alignItems: 'center', paddingVertical: 12 },
-    footerDivider: { width: 1, height: 20 },
+    postFooter: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1 },
+    footerIcon: { padding: 5 },
+    
     emptyContainer: { alignItems: 'center', marginTop: 50 },
     emptyText: { fontSize: 16 }
 });
