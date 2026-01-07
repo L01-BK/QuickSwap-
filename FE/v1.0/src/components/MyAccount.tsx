@@ -1,10 +1,15 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { navigateTo, setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { updateUser } from '../store/reducer/userSlice';
+import * as ImagePicker from 'expo-image-picker';
+import { updateUserProfile } from '../services/userService';
+import { uploadImage } from '../services/uploadService';
+import { ActivityIndicator } from 'react-native';
 
 
 export default function MyAccount() {
@@ -12,9 +17,72 @@ export default function MyAccount() {
     const isNightMode = useSelector((state: RootState) => state.theme.isNightMode);
     const user = useSelector((state: RootState) => state.user);
 
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [formData, setFormData] = React.useState(user);
+    const [isUploading, setIsUploading] = React.useState(false);
+
+    React.useEffect(() => {
+        setFormData(user);
+    }, [user]);
+
     const onBack = () => {
         dispatch(setHomeActiveTab('profile'));
         dispatch(navigateTo('home'));
+    };
+
+    const handleEditToggle = async () => {
+        if (isEditing) {
+            try {
+                // Call API to update user profile
+                const updatedUser = await updateUserProfile(formData, user.token);
+                dispatch(updateUser(updatedUser));
+                setIsEditing(false);
+            } catch (error) {
+                console.error("Failed to update profile:", error);
+                // Optionally handle error state here
+                alert("Failed to update profile. Please try again.");
+            }
+        } else {
+            setIsEditing(true);
+        }
+    };
+
+    const pickImage = async () => {
+        if (!isEditing) return;
+
+        // No permissions request is necessary for launching the image library
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            try {
+                setIsUploading(true);
+                const localUri = result.assets[0].uri;
+                // Optimistic update
+                handleChange('avatarUrl', localUri);
+
+                if (user.token) {
+                    const response = await uploadImage(localUri, user.token);
+                    console.log('Upload response:', response.url);
+                    handleChange('avatarUrl', response.url);
+                } else {
+                    console.error("No auth token found");
+                }
+            } catch (error) {
+                console.error("Error uploading image:", error);
+                alert("Failed to upload image. Please try again.");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    const handleChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const backgroundColor = isNightMode ? '#121212' : '#fff';
@@ -23,6 +91,39 @@ export default function MyAccount() {
     const subTextColor = isNightMode ? '#aaa' : '#555';
     const dividerColor = isNightMode ? '#333' : '#F3F4F6';
     const iconColor = isNightMode ? '#fff' : '#000';
+    const inputBorderColor = isNightMode ? '#555' : '#ddd';
+
+    const renderStars = (rating: number) => {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+            if (i <= Math.floor(rating)) {
+                stars.push(<Ionicons key={i} name="star" size={20} color="#FFD700" />);
+            } else if (i === Math.ceil(rating) && !Number.isInteger(rating)) {
+                stars.push(<Ionicons key={i} name="star-half" size={20} color="#FFD700" />);
+            } else {
+                stars.push(<Ionicons key={i} name="star-outline" size={20} color="#FFD700" />);
+            }
+        }
+        return stars;
+    };
+
+    const renderField = (label: string, field: keyof typeof formData, isLink = false, readOnly = false) => (
+        <View style={styles.row}>
+            <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+            {isEditing && !readOnly ? (
+                <TextInput
+                    style={[styles.input, { color: subTextColor, borderColor: inputBorderColor }]}
+                    value={String(formData[field] || '')}
+                    onChangeText={(text) => handleChange(field as string, text)}
+                    multiline={field === 'address'}
+                />
+            ) : (
+                <Text style={[styles.value, isLink && styles.link, { color: subTextColor }]}>
+                    {formData[field]}
+                </Text>
+            )}
+        </View>
+    );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
@@ -32,78 +133,72 @@ export default function MyAccount() {
                     <Ionicons name="chevron-back" size={28} color={iconColor} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: textColor }]}>My Account</Text>
-                <TouchableOpacity style={styles.editHeaderButton}>
-                    <Ionicons name="pencil" size={24} color={iconColor} />
+                <TouchableOpacity onPress={handleEditToggle} style={styles.editHeaderButton}>
+                    <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={26} color={iconColor} />
                 </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Profile Header Block */}
                 <View style={styles.profileHeader}>
-                    <View style={styles.avatarContainer}>
+                    <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} disabled={!isEditing}>
                         {/* Placeholder Avatar */}
                         <View style={styles.avatarPlaceholder}>
                             <Image
-                                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                                source={{ uri: formData.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
                                 style={styles.avatar}
                             />
+                            {isEditing && (
+                                <View style={styles.cameraIconOverlay}>
+                                    {isUploading ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                        <Ionicons name="camera" size={30} color="#fff" />
+                                    )}
+                                </View>
+                            )}
                         </View>
-                    </View>
+                    </TouchableOpacity>
 
-                    <Text style={[styles.nameText, { color: textColor }]}>{user.name}</Text>
-                    <View style={styles.handleContainer}>
-                        <Text style={[styles.handleText, { color: subTextColor }]}>{user.handle}</Text>
-                        <TouchableOpacity style={styles.editHandleButton}>
-                            <Ionicons name="pencil" size={16} color={iconColor} />
-                        </TouchableOpacity>
-                    </View>
+                    {isEditing ? (
+                        <TextInput
+                            style={[styles.nameInput, { color: textColor, borderColor: inputBorderColor }]}
+                            value={formData.name}
+                            onChangeText={(text) => handleChange('name', text)}
+                            placeholder="Name"
+                            placeholderTextColor={subTextColor}
+                        />
+                    ) : (
+                        <Text style={[styles.nameText, { color: textColor }]}>{formData.name}</Text>
+                    )}
+
+                    {/* Remove handle UI */}
                 </View>
 
                 {/* Info Card */}
                 <View style={[styles.card, { backgroundColor: cardBg }]}>
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: textColor }]}>Username</Text>
-                        <Text style={[styles.value, { color: subTextColor }]}>{user.username}</Text>
-                    </View>
+                    {renderField('Username', 'username')}
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                     <View style={styles.row}>
                         <Text style={[styles.label, { color: textColor }]}>My Rating</Text>
                         <View style={styles.ratingContainer}>
-                            <Ionicons name="star" size={20} color="#FFD700" />
-                            <Ionicons name="star" size={20} color="#FFD700" />
-                            <Ionicons name="star" size={20} color="#FFD700" />
-                            <Ionicons name="star" size={20} color="#FFD700" />
-                            <Ionicons name="star-outline" size={20} color="#FFD700" />
-                            <Text style={[styles.ratingText, { color: textColor }]}>{user.rating}</Text>
+                            {renderStars(formData.rating)}
+                            <Text style={[styles.ratingText, { color: textColor }]}>{formData.rating}</Text>
                         </View>
                     </View>
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: textColor }]}>Email</Text>
-                        <Text style={[styles.value, styles.link, { color: subTextColor }]}>{user.email}</Text>
-                    </View>
+                    {renderField('Email', 'email', true, true)}
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: textColor }]}>Phone</Text>
-                        <Text style={[styles.value, { color: subTextColor }]}>{user.phone}</Text>
-                    </View>
+                    {renderField('Phone', 'phone')}
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: textColor }]}>University</Text>
-                        <Text style={[styles.value, { color: subTextColor }]}>{user.university}</Text>
-                    </View>
+                    {renderField('University', 'university')}
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: textColor }]}>Address</Text>
-                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                            <Text style={[styles.value, { color: subTextColor }]}>{user.address}</Text>
-                        </View>
-                    </View>
+                    {renderField('Address', 'address')}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -233,5 +328,32 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#000',
+    },
+    input: {
+        fontSize: 16,
+        borderBottomWidth: 1,
+        paddingVertical: 5,
+        minWidth: 150,
+        textAlign: 'right',
+    },
+    nameInput: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 5,
+        borderBottomWidth: 1,
+        textAlign: 'center',
+        minWidth: 200,
+    },
+    handleInput: {
+        fontSize: 16,
+        borderBottomWidth: 1,
+        minWidth: 100,
+        textAlign: 'center',
+    },
+    cameraIconOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
