@@ -165,7 +165,7 @@ export default function AddPost() {
         try {
                 const notiPayload = {
                     title: "Đăng bài thành công",
-                    message: `Bài viết "${title}" của bạn đã được đăng lên hệ thống.`,
+                    body: `Bài viết "${title}" của bạn đã được đăng lên hệ thống.`,
                     type: "SYSTEM"
                 };
 
