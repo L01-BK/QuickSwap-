@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
 import { store } from './src/store';
 
@@ -150,7 +151,9 @@ function MainContent() {
 export default Sentry.wrap(function App() {
   return (
     <Provider store={store}>
-      <MainContent />
+      <SafeAreaProvider>
+        <MainContent />
+      </SafeAreaProvider>
     </Provider>
   );
 });

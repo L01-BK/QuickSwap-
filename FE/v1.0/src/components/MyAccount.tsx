@@ -13,6 +13,8 @@ import { uploadImage } from '../services/uploadService';
 
 import { BASE_URL, handleApiError } from '../utils/api';
 
+import * as Sentry from '@sentry/react-native';
+
 interface ReviewItem {
     id: number;
     raterId: number;
@@ -52,6 +54,7 @@ export default function MyAccount() {
     React.useEffect(() => {
         const fetchReviews = async () => {
             if (!user.token || !user.id) return;
+            await Sentry.startSpan({ name: "Fetch_My_Reviews", op: "http.client" }, async () => {
             try {
                 const listRes = await fetch(`${BASE_URL}/api/users/${user.id}/ratings`, {
                     headers: { 'Authorization': `Bearer ${user.token}` },
@@ -69,10 +72,12 @@ export default function MyAccount() {
                     setRatingSummary(summaryData);
                 }
             } catch (error) {
+                Sentry.captureException(error);
                 console.error("Lỗi tải đánh giá:", error);
             } finally {
                 setLoadingReviews(false);
             }
+            });
         };
 
         fetchReviews();
@@ -93,7 +98,7 @@ export default function MyAccount() {
                     [{ text: 'OK' }]
                 ); return;
             }
-
+            await Sentry.startSpan({ name: "Update_Profile", op: "http.client" }, async () => {
             try {
                 let pData = { ...formData };
 
@@ -105,11 +110,18 @@ export default function MyAccount() {
                 // Call API to update user profile
                 const updatedUser = await updateUserProfile(pData, user.token);
                 dispatch(updateUser(updatedUser));
+                Sentry.addBreadcrumb({
+                        category: "profile",
+                        message: "User profile updated successfully",
+                        level: "info"
+                    });
                 setIsEditing(false);
             } catch (error) {
+                Sentry.captureException(error);
                 console.error("Failed to update profile:", error);
                 Alert.alert("Cập nhật thông tin thất bại. Vui lòng thử lại.");
             }
+            });
         } else {
             setIsEditing(true);
         }
@@ -117,6 +129,11 @@ export default function MyAccount() {
 
     const pickImage = async () => {
         if (!isEditing) return;
+        Sentry.addBreadcrumb({
+            category: "ui.action",
+            message: "User opened image picker for avatar",
+            level: "info"
+        });
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
@@ -125,6 +142,7 @@ export default function MyAccount() {
         });
 
         if (!result.canceled) {
+            await Sentry.startSpan({ name: "Upload_Avatar", op: "http.client" }, async () => {
             try {
                 setIsUploading(true);
                 const localUri = result.assets[0].uri;
@@ -134,11 +152,13 @@ export default function MyAccount() {
                     handleChange('avatarUrl', response.url);
                 }
             } catch (error) {
+                Sentry.captureException(error);
                 console.error("Error uploading image:", error);
                 Alert.alert("Failed to upload image. Please try again.");
             } finally {
                 setIsUploading(false);
             }
+            });
         }
     };
 

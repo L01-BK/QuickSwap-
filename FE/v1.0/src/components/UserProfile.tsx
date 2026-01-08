@@ -7,6 +7,8 @@ import { RootState } from '../store';
 import { BASE_URL, handleApiError } from '../utils/api';
 import { useThemeColors } from '../hooks/useThemeColors';
 
+import * as Sentry from '@sentry/react-native';
+
 interface UserProfileProps {
     userId: string | number;
     initialName?: string;
@@ -80,8 +82,9 @@ export default function UserProfile({ userId, initialName, onBack }: UserProfile
 
     const fetchAllData = async () => {
         if (!currentUser.token || !userId) return;
-
+        await Sentry.startSpan({ name: "Fetch_Public_Profile", op: "http.client" }, async (span) => {
         try {
+            span?.setAttribute("target_user_id", userId);
             const userRes = await fetch(`${BASE_URL}/api/users/${userId}`, {
                 headers: { 'Authorization': `Bearer ${currentUser.token}` },
             });
@@ -105,10 +108,12 @@ export default function UserProfile({ userId, initialName, onBack }: UserProfile
             }
 
         } catch (error) {
+            Sentry.captureException(error);
             console.error("Lỗi tải dữ liệu:", error);
         } finally {
             setLoading(false);
         }
+        });
     };
 
     useEffect(() => {
@@ -125,7 +130,7 @@ export default function UserProfile({ userId, initialName, onBack }: UserProfile
 const handleSubmitRating = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
+    await Sentry.startSpan({ name: "Submit_User_Rating", op: "user.action" }, async () => {
     try {
 
         const response = await fetch(`${BASE_URL}/api/users/${userId}/rate`, {
@@ -168,15 +173,21 @@ const handleSubmitRating = async () => {
 
         setSubmitComment('');
         setSubmitScore(5);
-
+        Sentry.addBreadcrumb({
+                    category: "rating",
+                    message: `User rated target ${userId} with score ${submitScore}`,
+                    level: "info"
+                });
         fetchAllData(); 
 
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Lỗi gửi đánh giá:", error);
         Alert.alert("Lỗi", "Không thể gửi đánh giá. Vui lòng thử lại.");
     } finally {
         setIsSubmitting(false);
     }
+    });
 };
 
     const cardBg = isNightMode ? '#1E1E1E' : '#fff';

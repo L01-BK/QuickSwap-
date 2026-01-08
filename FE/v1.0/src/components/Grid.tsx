@@ -20,6 +20,8 @@ import { Post } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
 import UserProfile from './UserProfile';
 
+import * as Sentry from '@sentry/react-native';
+
 interface GridProps {
     onNotificationClick: () => void;
     allPosts: Post[];
@@ -56,6 +58,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
                         setBookmarkedIds(ids);
                     }
                 } catch (error) {
+                    Sentry.captureException(error);
                     console.log('Failed to fetch saved list for ids in Grid:', error);
                 }
             }
@@ -126,6 +129,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
                 handleApiError(response);
             }
         } catch (error) {
+            Sentry.captureException(error);
             console.error('Bookmark error:', error);
             setBookmarkedIds(prev => 
                 isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
@@ -134,6 +138,7 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
     };
 
     const handleDeletePost = async (postId: string | number) => {
+        await Sentry.startSpan({ name: "Delete_Post_Grid", op: "http.client" }, async () => {
         try {
             const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
                 method: 'DELETE',
@@ -147,8 +152,10 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
                 handleApiError(response);
             }
         } catch (error) {
+            Sentry.captureException(error);
             Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
         }
+        });
     };
 
     const handleShowOptions = (item: Post) => {
@@ -198,7 +205,9 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
         setIsSearching(true);
         setSearchTitle(`Đang tìm kiếm: "${keyword}"...`);
         setFilteredPosts([]);
+        await Sentry.startSpan({ name: "Search_Posts", op: "http.client" }, async (span) => {
         try {
+            span?.setAttribute("keyword_length", keyword.length);
             const response = await fetch(`${BASE_URL}/api/posts/search?keyword=${encodeURIComponent(keyword)}`, {
                 headers: { 'Authorization': `Bearer ${user.token}` },
             });
@@ -207,14 +216,17 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
             const mappedPosts = mapApiResponseToPost(data);
             setFilteredPosts(mappedPosts);
             setSearchTitle(`Kết quả cho: "${keyword}"`);
+            Sentry.setTag("search_result_count", mappedPosts.length);
             
         } catch (error) {
+            Sentry.captureException(error);
             console.error('Search error:', error);
             setSearchTitle(`Lỗi khi tìm kiếm`);
             Alert.alert("Lỗi", "Không thể tìm kiếm lúc này.");
         } finally {
             setLoading(false);
         }
+        });
     };
 
     const performFilter = async (categoryTitle: string) => {
@@ -224,7 +236,9 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
         setFilteredPosts([]);
         setSearchText(categoryTitle);
 
+        await Sentry.startSpan({ name: "Filter_Category", op: "http.client" }, async (span) => {
         try {
+            span?.setAttribute("category", categoryTitle);
             const response = await fetch(`${BASE_URL}/api/posts/filter?tag=${encodeURIComponent(categoryTitle)}`, {
                 headers: { 'Authorization': `Bearer ${user.token}` },
             });
@@ -245,11 +259,13 @@ export default function Grid({ onNotificationClick, allPosts, onPostClick, unrea
             setSearchTitle(`Danh mục: ${categoryTitle}`);
 
         } catch (error) {
+            Sentry.captureException(error);
             console.error('Filter error:', error);
             Alert.alert("Lỗi", "Không thể lọc danh mục lúc này.");
         } finally {
             setLoading(false);
         }
+        });
     };
 
     const submitSearch = () => {

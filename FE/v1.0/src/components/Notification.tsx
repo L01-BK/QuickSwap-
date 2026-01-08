@@ -10,6 +10,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { BASE_URL, handleApiError } from '../utils/api';
 
+import * as Sentry from '@sentry/react-native';
+
 interface NotificationsProps {
     onBack: () => void;
 }
@@ -37,6 +39,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
     const fetchNotifications = async () => {
         if (!user.token) return;
         setLoading(true);
+        await Sentry.startSpan({ name: "Fetch_Notifications", op: "http.client" }, async (span) => {
         try {
             const response = await fetch(`${BASE_URL}/api/notifications/me`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
@@ -44,7 +47,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
             const data = await handleApiError(response);
             
             let rawList = Array.isArray(data) ? data : (data.content || []);
-            
+            span?.setAttribute("notification_count", rawList.length);
             const mappedList: NotificationItem[] = rawList.map((item: any) => ({
                 id: item.id,
                 title: item.title,
@@ -63,10 +66,12 @@ export default function Notifications({ onBack }: NotificationsProps) {
 
             setNotifications(mappedList);
         } catch (error) {
+            Sentry.captureException(error);
             console.error('Fetch notification error:', error);
         } finally {
             setLoading(false);
         }
+        });
     };
 
     useEffect(() => {
@@ -80,7 +85,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
         setNotifications(prev => prev.map(n => 
             n.id === id ? { ...n, isRead: true } : n
         ));
-
+        await Sentry.startSpan({ name: "Mark_Notification_Read", op: "user.action" }, async () => {
         try {
             const url = `${BASE_URL}/api/notifications/me/${id}/read`;
             console.log("--> URL:", url);
@@ -105,11 +110,13 @@ export default function Notifications({ onBack }: NotificationsProps) {
             console.log("--> Thành công! Server đã xác nhận.");
 
         } catch (error) {
+            Sentry.captureException(error);
             console.error("--> LỖI XẢY RA:", error);
             
             setNotifications(previousNotifications);
             Alert.alert("Lỗi", "Không thể đánh dấu đã đọc. Vui lòng thử lại.");
         }
+        });
     };
 
     const handleMarkAllRead = async () => {
@@ -128,7 +135,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
                         
                         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
                         setMarkingAll(true);
-
+                        await Sentry.startSpan({ name: "Mark_All_Read", op: "user.action" }, async () => {
                         try {
                             const response = await fetch(`${BASE_URL}/api/notifications/me/read-all`, {
                                 method: 'PUT',
@@ -139,6 +146,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
                                 throw new Error('Failed to mark all read');
                             }
                         } catch (error) {
+                            Sentry.captureException(error);
                             console.error("Lỗi mark all:", error);
                             Alert.alert("Lỗi", "Không thể cập nhật trạng thái.");
                             
@@ -146,6 +154,7 @@ export default function Notifications({ onBack }: NotificationsProps) {
                         } finally {
                             setMarkingAll(false);
                         }
+                        });
                     }
                 }
             ]

@@ -8,6 +8,8 @@ import { RootState } from '../store';
 import { BASE_URL, handleApiError } from '../utils/api';
 import UserProfile from './UserProfile';
 
+import * as Sentry from '@sentry/react-native';
+
 interface BookmarkProps {
     onPostClick: (post: Post) => void;
     onNotificationClick: () => void;
@@ -29,6 +31,7 @@ export default function Bookmark({
     const fetchSavedPosts = async () => {
         if (!user.token) return;
         setLoading(true);
+        await Sentry.startSpan({ name: "Fetch_Saved_Posts", op: "http.client" }, async (span) => {
         try {
             const response = await fetch(`${BASE_URL}/api/users/me/saved`, {
                 headers: { 'Authorization': `Bearer ${user.token}` },
@@ -36,6 +39,7 @@ export default function Bookmark({
             const data = await handleApiError(response);
 
             if (Array.isArray(data)) {
+                span?.setAttribute("saved_count", data.length);
                 const mappedPosts: Post[] = data.map((p: any) => ({
                     id: p.id,
                     userId: p.user?.id,
@@ -52,10 +56,12 @@ export default function Bookmark({
                 setSavedPosts(mappedPosts);
             }
         } catch (error) {
+            Sentry.captureException(error);
             console.error('Failed to fetch saved posts:', error);
         } finally {
             setLoading(false);
         }
+        });
     };
 
     useEffect(() => {
@@ -71,6 +77,7 @@ export default function Bookmark({
                 {
                     text: "Đồng ý",
                     onPress: async () => {
+                        await Sentry.startSpan({ name: "Unsave_Post", op: "user.action" }, async () => {
                         try {
                             const response = await fetch(`${BASE_URL}/api/posts/${id}/save`, {
                                 method: 'DELETE',
@@ -79,12 +86,19 @@ export default function Bookmark({
 
                             if (response.ok) {
                                 setSavedPosts(prev => prev.filter(p => p.id !== id));
+                                Sentry.addBreadcrumb({
+                                        category: "bookmark",
+                                        message: `Unsaved post ${id}`,
+                                        level: "info"
+                                    });
                             } else {
                                 handleApiError(response);
                             }
                         } catch (error) {
+                            Sentry.captureException(error);
                             Alert.alert("Lỗi", "Không thể cập nhật trạng thái lưu.");
                         }
+                        });
                     }
                 }
             ]

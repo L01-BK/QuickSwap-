@@ -13,7 +13,9 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { BASE_URL, handleApiError } from '../utils/api';
 import { Post } from '../types';
 
-import UserProfile from './UserProfile'; // Import thêm component UserProfile
+import UserProfile from './UserProfile';
+
+import * as Sentry from '@sentry/react-native';
 
 const convertCategoryToEnum = (uiCategory: string) => {
     switch (uiCategory) {
@@ -64,7 +66,9 @@ export default function PostDetail() {
     useEffect(() => {
         const fetchPostDetailAndStatus = async () => {
             if (initialPost?.id) {
+                await Sentry.startSpan({ name: "Fetch_Post_Detail", op: "http.client" }, async (span) => {
                 try {
+                    span?.setAttribute("post_id", initialPost.id);
                     const response = await fetch(`${BASE_URL}/api/posts/${initialPost.id}`, {
                         headers: { 'Authorization': `Bearer ${user.token}` },
                     });
@@ -95,8 +99,10 @@ export default function PostDetail() {
                     }
 
                 } catch (error) {
+                    Sentry.captureException(error);
                     console.error('Failed to fetch post details:', error);
                 }
+                });
             }
         };
 
@@ -136,7 +142,7 @@ export default function PostDetail() {
         const currentStatus = isBookmarked;
         
         setIsBookmarked(!currentStatus);
-
+        await Sentry.startSpan({ name: "Toggle_Bookmark", op: "user.action" }, async () => {
         try {
             const method = currentStatus ? 'DELETE' : 'POST';
             const response = await fetch(`${BASE_URL}/api/posts/${post.id}/save`, {
@@ -147,11 +153,19 @@ export default function PostDetail() {
             if (!response.ok) {
                 setIsBookmarked(currentStatus);
                 handleApiError(response);
+            } else {
+                    Sentry.addBreadcrumb({
+                        category: "bookmark",
+                        message: `Post ${post.id} bookmark toggled to ${!currentStatus}`,
+                        level: "info"
+                    });
             }
         } catch (error) {
             setIsBookmarked(currentStatus);
+            Sentry.captureException(error);
             console.error('Bookmark error:', error);
         }
+        });
     };
 
     const handleUpdatePost = async () => {
@@ -168,6 +182,7 @@ export default function PostDetail() {
         if (!currentPost) return;
 
         setIsSaving(true);
+        await Sentry.startSpan({ name: "Update_Post", op: "http.client" }, async (span) => {
         try {
             const payload = {
                 title: editTitle.trim(),
@@ -212,13 +227,17 @@ export default function PostDetail() {
 
             setIsEditing(false);
             Alert.alert("Thành công", "Đã cập nhật bài viết.");
+            Sentry.setTag("post_update_status", "success");
 
         } catch (error: any) {
+            Sentry.setTag("post_update_status", "failed");
+            Sentry.captureException(error);
             console.error("Update error:", error);
             Alert.alert("Lỗi", error.message || "Không thể cập nhật bài viết.");
         } finally {
             setIsSaving(false);
         }
+        });
     };
     const extractInfoValue = (infoArray: string[], key: string): string => {
         const item = infoArray.find(s => s.startsWith(`${key}: `));
@@ -239,6 +258,7 @@ export default function PostDetail() {
             options.push({
                 text: 'Chỉnh sửa bài viết',
                 onPress: () => {
+                    Sentry.addBreadcrumb({ category: "ui", message: "User opened edit form", level: "info" });
                     // Populate data hiện tại vào form
                     setEditTitle(currentPost.title || '');
                     setEditContent(currentPost.content || '');
@@ -273,6 +293,7 @@ export default function PostDetail() {
                                 text: "Xóa ngay", 
                                 style: "destructive", 
                                 onPress: async () => {
+                                    await Sentry.startSpan({ name: "Delete_Post_Detail", op: "http.client" }, async () => {
                                     try {
                                         const res = await fetch(`${BASE_URL}/api/posts/${currentPost.id}`, {
                                             method: 'DELETE',
@@ -287,8 +308,10 @@ export default function PostDetail() {
                                             Alert.alert("Lỗi", "Không thể xóa bài viết này. Vui lòng bỏ lưu bài viết trước khi xóa.");
                                         }
                                     } catch (e) {
+                                        Sentry.captureException(e);
                                         Alert.alert("Lỗi kết nối", "Vui lòng kiểm tra mạng.");
                                     }
+                                    });
                                 }
                             }
                         ]

@@ -18,6 +18,8 @@ import { Post } from '../types';
 
 import UserProfile from './UserProfile';
 
+import * as Sentry from '@sentry/react-native';
+
 interface HomeProps {
     onPostClick: (post: any) => void;
     onNotificationClick: () => void;
@@ -90,15 +92,21 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     useEffect(() => {
         const fetchUserData = async () => {
             if (user.token) {
+                await Sentry.startSpan({ name: "Fetch_User_Me", op: "http.client" }, async () => {
                 try {
                     const response = await fetch(`${BASE_URL}/api/users/me`, {
                         headers: { 'Authorization': `Bearer ${user.token}` },
                     });
                     const data = await handleApiError(response);
+                    if (data && data.id) {
+                            Sentry.setUser({ id: data.id, email: data.email, username: data.username });
+                        }
                     dispatch(updateUser(data));
                 } catch (error) {
+                    Sentry.captureException(error);
                     console.error('Failed to fetch user data:', error);
                 }
+                });
             }
         };
 
@@ -130,6 +138,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const [refreshing, setRefreshing] = useState(false);
     const [sectionTitleY, setSectionTitleY] = useState(0);
     const onRefresh = useCallback(async () => {
+        await Sentry.startSpan({ name: "Refresh_Home_Feed", op: "ui.action.refresh" }, async () => {
         setRefreshing(true);
         setHasMore(true);
         setPage(0);
@@ -139,11 +148,14 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         await fetchPosts(0);
         
         setRefreshing(false);
+        });
     }, [user.token]);
     const fetchPosts = async (currentPage: number) => {
         if (!user.token || loading) return;
         setLoading(true);
+        await Sentry.startSpan({ name: "Fetch_Home_Posts", op: "http.client" }, async (span) => {
         try {
+            span?.setAttribute("page", currentPage);
             const limit = 5;
             const response = await fetch(`${BASE_URL}/api/posts?page=${currentPage}&limit=${limit}`, {
                 headers: { 'Authorization': `Bearer ${user.token}` },
@@ -179,12 +191,16 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                     return newPosts;
                 });
             }
+            Sentry.setTag("feed_status", "success");
 
         } catch (error) {
             console.error('Failed to fetch posts:', error);
+            Sentry.setTag("feed_status", "error");
+            Sentry.captureException(error);
         } finally {
             setLoading(false);
         }
+        });
     };
     const handleShowContact = (item: any) => {
         const emailInfo = item.email ? item.email : "Chưa cập nhật";
@@ -197,6 +213,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         );
     };
     const handleDeletePost = async (postId: string | number) => {
+        await Sentry.startSpan({ name: "Delete_Post", op: "http.client" }, async () => {
         try {
             const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
                 method: 'DELETE',
@@ -210,8 +227,10 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 handleApiError(response);
             }
         } catch (error) {
+            Sentry.captureException(error);
             Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
         }
+        });
     };
 
     const handleShowOptions = (item: Post) => {
@@ -305,6 +324,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 handleApiError(response);
             }
         } catch (error) {
+            Sentry.captureException(error); // Capture bookmark error
             console.error('Bookmark error:', error);
             setBookmarkedIds(prev =>
                 isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)

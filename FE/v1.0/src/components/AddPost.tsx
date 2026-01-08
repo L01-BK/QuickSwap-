@@ -15,7 +15,7 @@ import { BASE_URL, handleApiError } from '../utils/api';
 
 import * as Notifications from 'expo-notifications';
 
-
+import * as Sentry from '@sentry/react-native';
 
 const convertCategoryToEnum = (uiCategory: string) => {
     switch (uiCategory) {
@@ -81,6 +81,11 @@ export default function AddPost() {
     }, []);
     
     const pickImage = async () => {
+        Sentry.addBreadcrumb({
+            category: "ui.action",
+            message: "User opened Image Library",
+            level: "info",
+        });
         if (images.length >= 4) {
             Alert.alert("Thông báo", "Bạn chỉ được đăng tối đa 4 ảnh.");
             return;
@@ -134,7 +139,7 @@ export default function AddPost() {
     }
 
     setIsSubmitting(true);
-
+    await Sentry.startSpan({ name: "Create_New_Post", op: "http.client" }, async (span) => {
     try {
         const postPayload = {
             title: title.trim(),
@@ -162,6 +167,7 @@ export default function AddPost() {
         });
 
         await handleApiError(response);
+        Sentry.setTag("post_creation", "success");
         try {
                 const notiPayload = {
                     title: "Đăng bài thành công",
@@ -179,6 +185,7 @@ export default function AddPost() {
                 });
                 
             } catch (notiError) {
+                Sentry.captureException(notiError);
                 console.log("Lỗi tạo lịch sử thông báo:", notiError);
             }
         setShowConfirmModal(false);
@@ -203,11 +210,14 @@ export default function AddPost() {
         ]);
 
     } catch (error: any) {
+        Sentry.setTag("post_creation", "failed");
+        Sentry.captureException(error);
         console.error("Post Error:", error);
         Alert.alert("Lỗi", error.message || "Không thể đăng bài viết lúc này.");
     } finally {
         setIsSubmitting(false);
     }
+    });
 };
 
     const resetForm = () => {
@@ -221,6 +231,11 @@ export default function AddPost() {
         setDepartment('');
     };
     const takePhoto = async () => {
+        Sentry.addBreadcrumb({
+            category: "ui.action",
+            message: "User opened Camera",
+            level: "info",
+        });
         if (images.length >= 4) {
             Alert.alert("Thông báo", "Bạn chỉ được đăng tối đa 4 ảnh.");
             return;
