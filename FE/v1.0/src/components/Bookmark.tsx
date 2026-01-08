@@ -110,7 +110,7 @@ export default function Bookmark({
             options.push({
                 text: 'Xóa bài đăng',
                 style: 'destructive',
-                onPress: () => Alert.alert("Thông báo", "Vui lòng vào trang cá nhân để xóa bài viết của bạn.")
+                onPress: () => Alert.alert("Thông báo", "Vui lòng vào bỏ lưu để xóa bài viết của bạn.")
             });
         } else {
             options.push({

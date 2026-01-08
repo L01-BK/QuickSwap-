@@ -149,7 +149,7 @@ export default function PostDetail() {
                                                 { text: "OK", onPress: () => dispatch(navigateTo('home')) } 
                                             ]);
                                         } else {
-                                            Alert.alert("Lỗi", "Không thể xóa bài viết này.");
+                                            Alert.alert("Lỗi", "Không thể xóa bài viết này. Vui lòng bỏ lưu bài viết trước khi xóa.");
                                         }
                                     } catch (e) {
                                         Alert.alert("Lỗi kết nối", "Vui lòng kiểm tra mạng.");

@@ -176,30 +176,43 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     };
 
     const handleShowOptions = (item: Post) => {
-        const isOwner = user.id === item.userId;
-        const options: AlertButton[] = [];
+    const isOwner = user.id === item.userId;
+    const options: AlertButton[] = [];
 
-        if (isOwner) {
-             options.push({
-                text: 'Xóa bài đăng',
-                style: 'destructive',
-                onPress: () => { /* ... */ }
-            });
-        } else {
-            options.push({
-                text: 'Xem tài khoản người dùng',
-                onPress: () => {
-                    setViewingUser({
-                        id: item.userId,
-                        name: item.user
-                    });
-                }
-            });
-        }
+    if (isOwner) {
+        options.push({
+            text: 'Xóa bài đăng',
+            style: 'destructive',
+            onPress: () => {
+                Alert.alert(
+                    "Xác nhận",
+                    "Bạn có chắc chắn muốn xóa bài viết này không?",
+                    [
+                        { text: "Hủy", style: "cancel" },
+                        { 
+                            text: "Xóa", 
+                            style: "destructive", 
+                            onPress: () => handleDeletePost(item.id)
+                        }
+                    ]
+                );
+            }
+        });
+    } else {
+        options.push({
+            text: 'Xem tài khoản người dùng',
+            onPress: () => {
+                setViewingUser({
+                    id: item.userId,
+                    name: item.user
+                });
+            }
+        });
+    }
 
-        options.push({ text: 'Hủy', style: 'cancel' });
-        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
-    };
+    options.push({ text: 'Hủy', style: 'cancel' });
+    Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
+};
 
     useEffect(() => {
         if (activeTab === 'home') {
