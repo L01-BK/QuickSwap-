@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://10.0.2.2:8080';
+export const BASE_URL = 'https://quickswap-backend.onrender.com';
 
 // Helper to handle API errors
 export const handleApiError = async (response: Response) => {

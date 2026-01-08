@@ -14,6 +14,7 @@ import { setHomeActiveTab } from '../store/reducer/navigationSlice';
 import { BASE_URL, handleApiError } from '../utils/api';
 
 import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 import * as Sentry from '@sentry/react-native';
 
@@ -28,18 +29,18 @@ const convertCategoryToEnum = (uiCategory: string) => {
 };
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+    handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
 });
 
 export default function AddPost() {
     const dispatch = useDispatch();
     const { colors } = useThemeColors();
-    
+
     const user = useSelector((state: RootState) => state.user);
 
     const [title, setTitle] = useState('');
@@ -58,6 +59,12 @@ export default function AddPost() {
 
     React.useEffect(() => {
         (async () => {
+            const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+            if (isExpoGo && Platform.OS === 'android') {
+                console.log('Skipping notification setup in Expo Go on Android (remote notifications not supported)');
+                return;
+            }
+
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
             if (existingStatus !== 'granted') {
@@ -79,7 +86,7 @@ export default function AddPost() {
             }
         })();
     }, []);
-    
+
     const pickImage = async () => {
         Sentry.addBreadcrumb({
             category: "ui.action",
@@ -96,7 +103,7 @@ export default function AddPost() {
             return;
         }
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'], 
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
@@ -150,7 +157,7 @@ export default function AddPost() {
             });
 
             const data = await handleApiError(response);
-            
+
             if (data && data.url) {
                 console.log("✅ Upload thành công! Link ảnh:", data.url);
                 return data.url;
@@ -165,111 +172,111 @@ export default function AddPost() {
     };
 
     const handleConfirmPost = async () => {
-    if (!title.trim()) {
-        Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề bài đăng.");
-        return;
-    }
-    if (!content.trim()) {
-        Alert.alert("Thiếu thông tin", "Vui lòng nhập nội dung bài đăng.");
-        return;
-    }
-    if (!condition) {
-        Alert.alert("Thiếu thông tin", "Vui lòng nhập tình trạng sản phẩm (0-100%).");
-        return;
-    }
+        if (!title.trim()) {
+            Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề bài đăng.");
+            return;
+        }
+        if (!content.trim()) {
+            Alert.alert("Thiếu thông tin", "Vui lòng nhập nội dung bài đăng.");
+            return;
+        }
+        if (!condition) {
+            Alert.alert("Thiếu thông tin", "Vui lòng nhập tình trạng sản phẩm (0-100%).");
+            return;
+        }
 
-    setIsSubmitting(true);
-    await Sentry.startSpan({ name: "Create_New_Post", op: "http.client" }, async (span) => {
-    try {
-        const finalImageUrls: string[] = [];
-            
-            for (const localUri of images) {
-                try {
-                    const serverUrl = await uploadFileToServer(localUri);
-                    finalImageUrls.push(serverUrl);
-                } catch (uploadError) {
-                    Alert.alert("Lỗi Upload", "Không thể tải ảnh lên server. Vui lòng thử lại.");
-                    setIsSubmitting(false);
-                    return; // Dừng lại ngay nếu có 1 ảnh lỗi
+        setIsSubmitting(true);
+        await Sentry.startSpan({ name: "Create_New_Post", op: "http.client" }, async (span) => {
+            try {
+                const finalImageUrls: string[] = [];
+
+                for (const localUri of images) {
+                    try {
+                        const serverUrl = await uploadFileToServer(localUri);
+                        finalImageUrls.push(serverUrl);
+                    } catch (uploadError) {
+                        Alert.alert("Lỗi Upload", "Không thể tải ảnh lên server. Vui lòng thử lại.");
+                        setIsSubmitting(false);
+                        return; // Dừng lại ngay nếu có 1 ảnh lỗi
+                    }
                 }
-            }
-        const postPayload = {
-                title: title.trim(),
-                content: content.trim(),
-                price: 0,
-                category: convertCategoryToEnum(category),
-                conditionPercent: `${condition}%`,
-                isbnOrAuthor: author.trim(),
-                subjectCode: subject.trim(),
-                faculty: department.trim(),
-                
-                imageUrls: finalImageUrls, // Dùng mảng URL đã upload thành công
-                
-                tags: ['Trao đổi', category]
-            };
+                const postPayload = {
+                    title: title.trim(),
+                    content: content.trim(),
+                    price: 0,
+                    category: convertCategoryToEnum(category),
+                    conditionPercent: `${condition}%`,
+                    isbnOrAuthor: author.trim(),
+                    subjectCode: subject.trim(),
+                    faculty: department.trim(),
 
-        const response = await fetch(`${BASE_URL}/api/posts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.token}`,
-            },
-            body: JSON.stringify(postPayload),
-        });
+                    imageUrls: finalImageUrls, // Dùng mảng URL đã upload thành công
 
-        await handleApiError(response);
-        Sentry.setTag("post_creation", "success");
-        try {
-                const notiPayload = {
-                    title: "Đăng bài thành công",
-                    body: `Bài viết "${title}" của bạn đã được đăng lên hệ thống.`,
-                    type: "SYSTEM"
+                    tags: ['Trao đổi', category]
                 };
 
-                await fetch(`${BASE_URL}/api/notifications/send-to-user/${user.id}`, {
+                const response = await fetch(`${BASE_URL}/api/posts`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${user.token}`,
                     },
-                    body: JSON.stringify(notiPayload),
+                    body: JSON.stringify(postPayload),
                 });
-                
-            } catch (notiError) {
-                Sentry.captureException(notiError);
-                console.log("Lỗi tạo lịch sử thông báo:", notiError);
-            }
-        setShowConfirmModal(false);
-        resetForm();
-        
-        await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: "Đăng bài thành công! 🎉",
-                    body: `Bài viết "${title}" của bạn đã được đăng lên QuickSwap.`,
-                    sound: true,
-                },
-                trigger: null,
-            });
 
-        Alert.alert("Thành công", "Bài viết đã được đăng!", [
-            {
-                text: "OK",
-                onPress: () => {
-                    dispatch(setHomeActiveTab('home')); 
+                await handleApiError(response);
+                Sentry.setTag("post_creation", "success");
+                try {
+                    const notiPayload = {
+                        title: "Đăng bài thành công",
+                        body: `Bài viết "${title}" của bạn đã được đăng lên hệ thống.`,
+                        type: "SYSTEM"
+                    };
+
+                    await fetch(`${BASE_URL}/api/notifications/send-to-user/${user.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                        body: JSON.stringify(notiPayload),
+                    });
+
+                } catch (notiError) {
+                    Sentry.captureException(notiError);
+                    console.log("Lỗi tạo lịch sử thông báo:", notiError);
                 }
-            }
-        ]);
+                setShowConfirmModal(false);
+                resetForm();
 
-    } catch (error: any) {
-        Sentry.setTag("post_creation", "failed");
-        Sentry.captureException(error);
-        console.error("Post Error:", error);
-        Alert.alert("Lỗi", error.message || "Không thể đăng bài viết lúc này.");
-    } finally {
-        setIsSubmitting(false);
-    }
-    });
-};
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: "Đăng bài thành công! 🎉",
+                        body: `Bài viết "${title}" của bạn đã được đăng lên QuickSwap.`,
+                        sound: true,
+                    },
+                    trigger: null,
+                });
+
+                Alert.alert("Thành công", "Bài viết đã được đăng!", [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            dispatch(setHomeActiveTab('home'));
+                        }
+                    }
+                ]);
+
+            } catch (error: any) {
+                Sentry.setTag("post_creation", "failed");
+                Sentry.captureException(error);
+                console.error("Post Error:", error);
+                Alert.alert("Lỗi", error.message || "Không thể đăng bài viết lúc này.");
+            } finally {
+                setIsSubmitting(false);
+            }
+        });
+    };
 
     const resetForm = () => {
         setTitle('');
@@ -333,8 +340,8 @@ export default function AddPost() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-                 {/* ... (Phần UI Input giữ nguyên như cũ) ... */}
-                 
+                {/* ... (Phần UI Input giữ nguyên như cũ) ... */}
+
                 <View style={[styles.inputCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <TextInput
                         placeholder="Tiêu đề bài viết (Ngắn gọn)"
@@ -358,8 +365,8 @@ export default function AddPost() {
 
                 {/* Image Picker */}
                 <View style={styles.imagePickerRow}>
-                    <TouchableOpacity 
-                        style={styles.addPhotoCircle} 
+                    <TouchableOpacity
+                        style={styles.addPhotoCircle}
                         onPress={() => {
                             Alert.alert(
                                 "Thêm hình ảnh",
@@ -378,7 +385,7 @@ export default function AddPost() {
                         </View>
                         <Text style={[styles.photoCount, { color: colors.text }]}>{images.length}/4</Text>
                     </TouchableOpacity>
-                    
+
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {images.map((uri, index) => (
                             <View key={index} style={[styles.imagePlaceholder, { borderColor: colors.border }]}>

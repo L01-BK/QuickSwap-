@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "QuickSwap",
-    "slug": "QuickSwap",
+    "slug": "quickswap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,6 +17,8 @@
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
+      "package": "com.l01bk.quickswap",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,6 +39,11 @@
           "organization": "nguyen-gia-thinh"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "42cfe76d-f2fd-4ce3-8849-0c2ed34336dc"
+      }
+    }
   }
 }

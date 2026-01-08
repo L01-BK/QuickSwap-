@@ -42,6 +42,6 @@ yarn-error.*
 
 BE/run_log_final.txt
 
-google-services.json
-GoogleService-Info.plist
+!google-services.json
+!GoogleService-Info.plist
 .env.local

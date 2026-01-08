@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert, AlertButton, Dimensions, RefreshControl} from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert, AlertButton, Dimensions, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -17,6 +17,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { Post } from '../types';
 
 import UserProfile from './UserProfile';
+import PostItem from './PostItem';
 
 import * as Sentry from '@sentry/react-native';
 
@@ -27,24 +28,15 @@ interface HomeProps {
 
 export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const BANNER_DATA = [
-    { id: '1', image: require('../../assets/images/banner-1.jpg') },
-    { id: '2', image: require('../../assets/images/banner-2.jpg') },
-    { id: '3', image: require('../../assets/images/banner-3.jpg') },
+        { id: '1', image: require('../../assets/images/banner-1.jpg') },
+        { id: '2', image: require('../../assets/images/banner-2.jpg') },
+        { id: '3', image: require('../../assets/images/banner-3.jpg') },
     ];
 
     const [activeBannerIndex, setActiveBannerIndex] = useState(0);
     const bannerRef = React.useRef<FlatList>(null);
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            if (activeBannerIndex < BANNER_DATA.length - 1) {
-                bannerRef.current?.scrollToIndex({ index: activeBannerIndex + 1, animated: true });
-            } else {
-                bannerRef.current?.scrollToIndex({ index: 0, animated: true });
-            }
-        }, 4000);
-        return () => clearInterval(timer);
-    }, [activeBannerIndex]);
+
 
     const dispatch = useDispatch();
     const { colors } = useThemeColors();
@@ -59,8 +51,10 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     };
 
     const [bookmarkedIds, setBookmarkedIds] = useState<(string | number)[]>([]);
+    const bookmarkedIdsRef = React.useRef(bookmarkedIds);
+    useEffect(() => { bookmarkedIdsRef.current = bookmarkedIds; }, [bookmarkedIds]);
 
-    const [viewingUser, setViewingUser] = useState<{id: string | number, name: string} | null>(null);
+    const [viewingUser, setViewingUser] = useState<{ id: string | number, name: string } | null>(null);
 
     const fetchUnreadNotifications = async () => {
         if (!user.token) return;
@@ -69,9 +63,9 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
             const data = await handleApiError(response);
-            
+
             const rawList = Array.isArray(data) ? data : (data.content || []);
-            
+
             const count = rawList.filter((item: any) => {
                 const isRead = item.read !== undefined ? item.read : item.isRead;
                 return !isRead;
@@ -84,7 +78,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     };
     useEffect(() => {
         fetchUnreadNotifications();
-        
+
         const interval = setInterval(fetchUnreadNotifications, 5000);
         return () => clearInterval(interval);
     }, [user.token]);
@@ -93,19 +87,19 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         const fetchUserData = async () => {
             if (user.token) {
                 await Sentry.startSpan({ name: "Fetch_User_Me", op: "http.client" }, async () => {
-                try {
-                    const response = await fetch(`${BASE_URL}/api/users/me`, {
-                        headers: { 'Authorization': `Bearer ${user.token}` },
-                    });
-                    const data = await handleApiError(response);
-                    if (data && data.id) {
+                    try {
+                        const response = await fetch(`${BASE_URL}/api/users/me`, {
+                            headers: { 'Authorization': `Bearer ${user.token}` },
+                        });
+                        const data = await handleApiError(response);
+                        if (data && data.id) {
                             Sentry.setUser({ id: data.id, email: data.email, username: data.username });
                         }
-                    dispatch(updateUser(data));
-                } catch (error) {
-                    Sentry.captureException(error);
-                    console.error('Failed to fetch user data:', error);
-                }
+                        dispatch(updateUser(data));
+                    } catch (error) {
+                        Sentry.captureException(error);
+                        console.error('Failed to fetch user data:', error);
+                    }
                 });
             }
         };
@@ -139,70 +133,70 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const [sectionTitleY, setSectionTitleY] = useState(0);
     const onRefresh = useCallback(async () => {
         await Sentry.startSpan({ name: "Refresh_Home_Feed", op: "ui.action.refresh" }, async () => {
-        setRefreshing(true);
-        setHasMore(true);
-        setPage(0);
-        dispatch(setHomePage(0));
-        
-        // Gọi trực tiếp fetchPosts với page 0
-        await fetchPosts(0);
-        
-        setRefreshing(false);
+            setRefreshing(true);
+            setHasMore(true);
+            setPage(0);
+            dispatch(setHomePage(0));
+
+            // Gọi trực tiếp fetchPosts với page 0
+            await fetchPosts(0);
+
+            setRefreshing(false);
         });
     }, [user.token]);
     const fetchPosts = async (currentPage: number) => {
         if (!user.token || loading) return;
         setLoading(true);
         await Sentry.startSpan({ name: "Fetch_Home_Posts", op: "http.client" }, async (span) => {
-        try {
-            span?.setAttribute("page", currentPage);
-            const limit = 5;
-            const response = await fetch(`${BASE_URL}/api/posts?page=${currentPage}&limit=${limit}`, {
-                headers: { 'Authorization': `Bearer ${user.token}` },
-            });
-            const data = await handleApiError(response);
-            const postsList = data.content || [];
-
-            if (postsList.length < limit) setHasMore(false);
-
-            const mappedPosts: Post[] = postsList.map((p: any) => {
-                return {
-                    id: p.id,
-                    userId: p.user?.id,
-                    user: p.user?.name || 'Người dùng ẩn',
-                    email: p.user?.email || null,
-                    phone: p.user?.phoneNumber || p.user?.phone || null,
-                    title: p.title,
-                    time: p.time || 'Vừa xong',
-                    tags: p.tags || [],
-                    content: p.content,
-                    info: p.info ? Object.entries(p.info).map(([k, v]) => `${k}: ${v}`) : [],
-                    images: p.imageUrls || []
-                };
-            });
-
-            if (currentPage === 0) {
-                setAllPosts(mappedPosts);
-                dispatch(setHomePosts(mappedPosts));
-            } else {
-                setAllPosts(prev => {
-                    const newPosts = [...prev, ...mappedPosts];
-                    dispatch(setHomePosts(newPosts));
-                    return newPosts;
+            try {
+                span?.setAttribute("page", currentPage);
+                const limit = 5;
+                const response = await fetch(`${BASE_URL}/api/posts?page=${currentPage}&limit=${limit}`, {
+                    headers: { 'Authorization': `Bearer ${user.token}` },
                 });
-            }
-            Sentry.setTag("feed_status", "success");
+                const data = await handleApiError(response);
+                const postsList = data.content || [];
 
-        } catch (error) {
-            console.error('Failed to fetch posts:', error);
-            Sentry.setTag("feed_status", "error");
-            Sentry.captureException(error);
-        } finally {
-            setLoading(false);
-        }
+                if (postsList.length < limit) setHasMore(false);
+
+                const mappedPosts: Post[] = postsList.map((p: any) => {
+                    return {
+                        id: p.id,
+                        userId: p.user?.id,
+                        user: p.user?.name || 'Người dùng ẩn',
+                        email: p.user?.email || null,
+                        phone: p.user?.phoneNumber || p.user?.phone || null,
+                        title: p.title,
+                        time: p.time || 'Vừa xong',
+                        tags: p.tags || [],
+                        content: p.content,
+                        info: p.info ? Object.entries(p.info).map(([k, v]) => `${k}: ${v}`) : [],
+                        images: p.imageUrls || []
+                    };
+                });
+
+                if (currentPage === 0) {
+                    setAllPosts(mappedPosts);
+                    dispatch(setHomePosts(mappedPosts));
+                } else {
+                    setAllPosts(prev => {
+                        const newPosts = [...prev, ...mappedPosts];
+                        dispatch(setHomePosts(newPosts));
+                        return newPosts;
+                    });
+                }
+                Sentry.setTag("feed_status", "success");
+
+            } catch (error) {
+                console.error('Failed to fetch posts:', error);
+                Sentry.setTag("feed_status", "error");
+                Sentry.captureException(error);
+            } finally {
+                setLoading(false);
+            }
         });
     };
-    const handleShowContact = (item: any) => {
+    const handleShowContact = useCallback((item: any) => {
         const emailInfo = item.email ? item.email : "Chưa cập nhật";
         const phoneInfo = item.phone ? item.phone : "Chưa cập nhật";
 
@@ -211,80 +205,80 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             `Người đăng: ${item.user}\n\n📧 Email: ${emailInfo}\n📞 SĐT: ${phoneInfo}`,
             [{ text: "Đóng", style: "cancel" }]
         );
-    };
-    const handleDeletePost = async (postId: string | number) => {
+    }, []);
+    const handleDeletePost = useCallback(async (postId: string | number) => {
         await Sentry.startSpan({ name: "Delete_Post", op: "http.client" }, async () => {
-        try {
-            const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${user.token}` },
-            });
-
-            if (response.ok) {
-                setAllPosts(prev => prev.filter(p => p.id !== postId));
-                Alert.alert("Thành công", "Đã xóa bài viết.");
-            } else {
-                handleApiError(response);
-            }
-        } catch (error) {
-            Sentry.captureException(error);
-            Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
-        }
-        });
-    };
-
-    const handleShowOptions = (item: Post) => {
-    const isOwner = user.id === item.userId;
-    const options: AlertButton[] = [];
-
-    if (isOwner) {
-        options.push({
-            text: 'Xóa bài đăng',
-            style: 'destructive',
-            onPress: () => {
-                Alert.alert(
-                    "Xác nhận",
-                    "Bạn có chắc chắn muốn xóa bài viết này không?",
-                    [
-                        { text: "Hủy", style: "cancel" },
-                        { 
-                            text: "Xóa", 
-                            style: "destructive", 
-                            onPress: () => handleDeletePost(item.id)
-                        }
-                    ]
-                );
-            }
-        });
-    } else {
-        options.push({
-            text: 'Xem tài khoản người dùng',
-            onPress: () => {
-                setViewingUser({
-                    id: item.userId,
-                    name: item.user
+            try {
+                const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${user.token}` },
                 });
+
+                if (response.ok) {
+                    setAllPosts(prev => prev.filter(p => p.id !== postId));
+                    Alert.alert("Thành công", "Đã xóa bài viết.");
+                } else {
+                    handleApiError(response);
+                }
+            } catch (error) {
+                Sentry.captureException(error);
+                Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
             }
         });
-    }
+    }, [user.token]);
 
-    options.push({ text: 'Hủy', style: 'cancel' });
-    Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
-};
+    const handleShowOptions = useCallback((item: Post) => {
+        const isOwner = user.id === item.userId;
+        const options: AlertButton[] = [];
+
+        if (isOwner) {
+            options.push({
+                text: 'Xóa bài đăng',
+                style: 'destructive',
+                onPress: () => {
+                    Alert.alert(
+                        "Xác nhận",
+                        "Bạn có chắc chắn muốn xóa bài viết này không?",
+                        [
+                            { text: "Hủy", style: "cancel" },
+                            {
+                                text: "Xóa",
+                                style: "destructive",
+                                onPress: () => handleDeletePost(item.id)
+                            }
+                        ]
+                    );
+                }
+            });
+        } else {
+            options.push({
+                text: 'Xem tài khoản người dùng',
+                onPress: () => {
+                    setViewingUser({
+                        id: item.userId,
+                        name: item.user
+                    });
+                }
+            });
+        }
+
+        options.push({ text: 'Hủy', style: 'cancel' });
+        Alert.alert("Tùy chọn", isOwner ? "Quản lý bài viết" : `Bài viết của ${item.user}`, options);
+    }, [user.id, handleDeletePost]);
 
     useEffect(() => {
         if (activeTab === 'home') {
             // if (homePosts.length === 0) {
-                setPage(0);
-                setHasMore(true);
-                fetchPosts(0);
+            setPage(0);
+            setHasMore(true);
+            fetchPosts(0);
             // } else {
             //     setAllPosts(homePosts);
             //     setPage(homePage);
             // }
         }
     }, [user.token, activeTab]);
-    
+
 
     const loadMorePosts = () => {
         if (loading || allPosts.length === 0) return;
@@ -303,8 +297,8 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         dispatch(setHomeActiveTab('home'));
     };
 
-    const toggleBookmark = async (id: string | number) => {
-        const isSaved = bookmarkedIds.includes(id);
+    const toggleBookmark = useCallback(async (id: string | number) => {
+        const isSaved = bookmarkedIdsRef.current.includes(id);
 
         setBookmarkedIds(prev =>
             isSaved ? prev.filter(itemId => itemId !== id) : [...prev, id]
@@ -330,49 +324,18 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 isSaved ? [...prev, id] : prev.filter(itemId => itemId !== id)
             );
         }
-    };
+    }, [user.token]);
 
     const renderPostItem = useCallback(({ item }: { item: Post }) => (
-        <TouchableOpacity
-            style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => onPostClick(item)}
-        >
-            <View style={styles.postHeader}><Text style={[styles.postUser, { color: colors.text }]}>{item.user}</Text></View>
-            <View style={[styles.postImageContainer, { backgroundColor: colors.iconBg }]}>
-                {item.images && item.images.length > 0 ? (
-                    <Image source={{ uri: item.images[0] }} style={styles.postCardImage} resizeMode="cover" />
-                ) : (
-                    <Ionicons name="image-outline" size={60} color={colors.subText} />
-                )}
-            </View>
-            <View style={styles.postContent}>
-                <Text style={[styles.postTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.postTime, { color: colors.subText }]}>{item.time}</Text>
-                <View style={styles.tagsContainer}>
-                    {item.tags.map((tag, idx) => (
-                        <View key={idx} style={[styles.tag, tag === 'Trao đổi' ? styles.tagBlue : styles.tagLightBlue]}>
-                            <Text style={styles.tagText}>{tag}</Text>
-                        </View>
-                    ))}
-                </View>
-            </View>
-            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
-                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowContact(item)}>
-                    <Ionicons name="chatbubble-outline" size={20} color={colors.subText} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.footerIcon} onPress={() => toggleBookmark(item.id)}>
-                    <Ionicons
-                        name={bookmarkedIds.includes(item.id) ? "bookmark" : "bookmark-outline"}
-                        size={20}
-                        color={bookmarkedIds.includes(item.id) ? "#60A5FA" : colors.subText}
-                    />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.footerIcon} onPress={() => handleShowOptions(item)}>
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.subText} />
-                </TouchableOpacity>
-            </View>
-        </TouchableOpacity>
-    ), [colors, bookmarkedIds]);
+        <PostItem
+            item={item}
+            isBookmarked={bookmarkedIds.includes(item.id)}
+            onPress={onPostClick}
+            onShowContact={handleShowContact}
+            onToggleBookmark={toggleBookmark}
+            onShowOptions={handleShowOptions}
+        />
+    ), [bookmarkedIds, onPostClick, handleShowContact, toggleBookmark, handleShowOptions]);
 
 
 
@@ -383,37 +346,37 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 <Text style={[styles.userNameText, { color: colors.text }]}>{user.name || user.username}.</Text>
             </View>
             <View style={styles.bannerWrapper}>
-            <FlatList
-                ref={bannerRef}
-                data={BANNER_DATA}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                onMomentumScrollEnd={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 40));
-                    setActiveBannerIndex(index);
-                }}
-                renderItem={({ item }) => (
-                    <View style={styles.bannerSlide}>
-                        {/* Bỏ { uri: ... } đi vì item.image giờ đã là kết quả của require */}
-                        <Image source={item.image} style={styles.bannerImage} resizeMode="cover" />
-                    </View>
-                )}
-            />
-            {/* Chấm tròn chỉ báo (Pagination Dots) */}
-            <View style={styles.paginationContainer}>
-                {BANNER_DATA.map((_, index) => (
-                    <View 
-                        key={index} 
-                        style={[
-                            styles.dot, 
-                            { backgroundColor: index === activeBannerIndex ? '#60A5FA' : 'rgba(255,255,255,0.5)' }
-                        ]} 
-                    />
-                ))}
+                <FlatList
+                    ref={bannerRef}
+                    data={BANNER_DATA}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.id}
+                    onMomentumScrollEnd={(event) => {
+                        const index = Math.round(event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 40));
+                        setActiveBannerIndex(index);
+                    }}
+                    renderItem={({ item }) => (
+                        <View style={styles.bannerSlide}>
+                            {/* Bỏ { uri: ... } đi vì item.image giờ đã là kết quả của require */}
+                            <Image source={item.image} style={styles.bannerImage} resizeMode="cover" />
+                        </View>
+                    )}
+                />
+                {/* Chấm tròn chỉ báo (Pagination Dots) */}
+                <View style={styles.paginationContainer}>
+                    {BANNER_DATA.map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.dot,
+                                { backgroundColor: index === activeBannerIndex ? '#60A5FA' : 'rgba(255,255,255,0.5)' }
+                            ]}
+                        />
+                    ))}
+                </View>
             </View>
-        </View>
             <Text
                 style={[styles.sectionTitle, { color: colors.text }]}
                 onLayout={(event) => setSectionTitleY(event.nativeEvent.layout.y)}
@@ -429,7 +392,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const renderContent = () => {
         switch (activeTab) {
             case 'grid':
-                return <Grid onNotificationClick={onNotificationClick} allPosts={allPosts} onPostClick={onPostClick} unreadCount={unreadCount}/>;
+                return <Grid onNotificationClick={onNotificationClick} allPosts={allPosts} onPostClick={onPostClick} unreadCount={unreadCount} />;
             case 'add':
                 return <AddPost />;
             case 'bookmark':
@@ -445,7 +408,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
             case 'home':
             default:
                 return (
-                    <View style={{ flex: 1 }}> 
+                    <View style={{ flex: 1 }}>
                         {/* Fixed Header placed OUTSIDE of FlatList */}
                         <View style={styles.header}>
                             <Text style={[styles.logoText, { color: colors.text }]}>
@@ -457,40 +420,40 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                             </TouchableOpacity>
                         </View>
 
-                        
-                    <View style={{ flex: 1, paddingHorizontal: 20 }}>
-                        <FlatList
-                            ref={flatListRef}
-                            data={allPosts}
-                            keyExtractor={(item) => item.id.toString()}
-                            renderItem={renderPostItem}
-                            ListHeaderComponent={renderScrollableHeader()}
-                            ListFooterComponent={
-                                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
-                                    {loading && <ActivityIndicator size="large" color={colors.primary} />}
-                                </View>
-                            }
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={onRefresh}
-                                    colors={[colors.primary]} // Android
-                                    tintColor={colors.primary} // iOS
-                                />
-                            }
-                            onEndReached={loadMorePosts}
-                            onEndReachedThreshold={0.01}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    </View>
+
+                        <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                            <FlatList
+                                ref={flatListRef}
+                                data={allPosts}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={renderPostItem}
+                                ListHeaderComponent={renderScrollableHeader()}
+                                ListFooterComponent={
+                                    <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                                        {loading && <ActivityIndicator size="large" color={colors.primary} />}
+                                    </View>
+                                }
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]} // Android
+                                        tintColor={colors.primary} // iOS
+                                    />
+                                }
+                                onEndReached={loadMorePosts}
+                                onEndReachedThreshold={0.01}
+                                showsVerticalScrollIndicator={false}
+                            />
+                        </View>
                     </View>
                 );
         }
     };
     if (viewingUser) {
         return (
-            <UserProfile 
-                userId={viewingUser.id} 
+            <UserProfile
+                userId={viewingUser.id}
                 initialName={viewingUser.name}
                 onBack={() => setViewingUser(null)}
             />

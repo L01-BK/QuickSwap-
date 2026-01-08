@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput, ActivityIndicator, Alert} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput, ActivityIndicator, Alert } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,28 +55,28 @@ export default function MyAccount() {
         const fetchReviews = async () => {
             if (!user.token || !user.id) return;
             await Sentry.startSpan({ name: "Fetch_My_Reviews", op: "http.client" }, async () => {
-            try {
-                const listRes = await fetch(`${BASE_URL}/api/users/${user.id}/ratings`, {
-                    headers: { 'Authorization': `Bearer ${user.token}` },
-                });
-                if (listRes.ok) {
-                    const listData = await listRes.json();
-                    setReviews(listData);
-                }
+                try {
+                    const listRes = await fetch(`${BASE_URL}/api/users/${user.id}/ratings`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` },
+                    });
+                    if (listRes.ok) {
+                        const listData = await listRes.json();
+                        setReviews(listData);
+                    }
 
-                const summaryRes = await fetch(`${BASE_URL}/api/users/${user.id}/rating-summary`, {
-                    headers: { 'Authorization': `Bearer ${user.token}` },
-                });
-                if (summaryRes.ok) {
-                    const summaryData = await summaryRes.json();
-                    setRatingSummary(summaryData);
+                    const summaryRes = await fetch(`${BASE_URL}/api/users/${user.id}/rating-summary`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` },
+                    });
+                    if (summaryRes.ok) {
+                        const summaryData = await summaryRes.json();
+                        setRatingSummary(summaryData);
+                    }
+                } catch (error) {
+                    Sentry.captureException(error);
+                    console.error("Lỗi tải đánh giá:", error);
+                } finally {
+                    setLoadingReviews(false);
                 }
-            } catch (error) {
-                Sentry.captureException(error);
-                console.error("Lỗi tải đánh giá:", error);
-            } finally {
-                setLoadingReviews(false);
-            }
             });
         };
 
@@ -98,29 +98,37 @@ export default function MyAccount() {
                     [{ text: 'OK' }]
                 ); return;
             }
+
+            if (formData.phone.length !== 10) {
+                Alert.alert(
+                    'Số điện thoại không hợp lệ',
+                    'Số điện thoại phải có đúng 10 chữ số.',
+                    [{ text: 'OK' }]
+                ); return;
+            }
             await Sentry.startSpan({ name: "Update_Profile", op: "http.client" }, async () => {
-            try {
-                let pData = { ...formData };
+                try {
+                    let pData = { ...formData };
 
-                // Set default avatar if missing
-                if (!pData.avatarUrl) {
-                    pData.avatarUrl = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
-                }
+                    // Set default avatar if missing
+                    if (!pData.avatarUrl) {
+                        pData.avatarUrl = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
+                    }
 
-                // Call API to update user profile
-                const updatedUser = await updateUserProfile(pData, user.token);
-                dispatch(updateUser(updatedUser));
-                Sentry.addBreadcrumb({
+                    // Call API to update user profile
+                    const updatedUser = await updateUserProfile(pData, user.token);
+                    dispatch(updateUser(updatedUser));
+                    Sentry.addBreadcrumb({
                         category: "profile",
                         message: "User profile updated successfully",
                         level: "info"
                     });
-                setIsEditing(false);
-            } catch (error) {
-                Sentry.captureException(error);
-                console.error("Failed to update profile:", error);
-                Alert.alert("Cập nhật thông tin thất bại. Vui lòng thử lại.");
-            }
+                    setIsEditing(false);
+                } catch (error) {
+                    Sentry.captureException(error);
+                    console.error("Failed to update profile:", error);
+                    Alert.alert("Cập nhật thông tin thất bại. Vui lòng thử lại.");
+                }
             });
         } else {
             setIsEditing(true);
@@ -143,21 +151,21 @@ export default function MyAccount() {
 
         if (!result.canceled) {
             await Sentry.startSpan({ name: "Upload_Avatar", op: "http.client" }, async () => {
-            try {
-                setIsUploading(true);
-                const localUri = result.assets[0].uri;
-                handleChange('avatarUrl', localUri);
-                if (user.token) {
-                    const response = await uploadImage(localUri, user.token);
-                    handleChange('avatarUrl', response.url);
+                try {
+                    setIsUploading(true);
+                    const localUri = result.assets[0].uri;
+                    handleChange('avatarUrl', localUri);
+                    if (user.token) {
+                        const response = await uploadImage(localUri, user.token);
+                        handleChange('avatarUrl', response.url);
+                    }
+                } catch (error) {
+                    Sentry.captureException(error);
+                    console.error("Error uploading image:", error);
+                    Alert.alert("Failed to upload image. Please try again.");
+                } finally {
+                    setIsUploading(false);
                 }
-            } catch (error) {
-                Sentry.captureException(error);
-                console.error("Error uploading image:", error);
-                Alert.alert("Failed to upload image. Please try again.");
-            } finally {
-                setIsUploading(false);
-            }
             });
         }
     };
@@ -193,23 +201,35 @@ export default function MyAccount() {
         return stars;
     };
 
-    const renderField = (label: string, field: keyof typeof formData, isLink = false, readOnly = false) => (
-        <View style={styles.row}>
-            <Text style={[styles.label, { color: textColor }]}>{label}</Text>
-            {isEditing && !readOnly ? (
-                <TextInput
-                    style={[styles.input, { color: subTextColor, borderColor: inputBorderColor }]}
-                    value={String(formData[field] || '')}
-                    onChangeText={(text) => handleChange(field as string, text)}
-                    multiline={field === 'address'}
-                />
-            ) : (
-                <Text style={[styles.value, isLink && styles.link, { color: subTextColor }]}>
-                    {formData[field]}
-                </Text>
-            )}
-        </View>
-    );
+    const renderField = (label: string, field: keyof typeof formData, isLink = false, readOnly = false) => {
+        const isPhone = field === 'phone';
+        return (
+            <View style={styles.row}>
+                <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+                {isEditing && !readOnly ? (
+                    <TextInput
+                        style={[styles.input, { color: subTextColor, borderColor: inputBorderColor }]}
+                        value={String(formData[field] || '')}
+                        onChangeText={(text) => {
+                            if (isPhone) {
+                                // Only allow numbers
+                                const numericValue = text.replace(/[^0-9]/g, '');
+                                handleChange(field as string, numericValue);
+                            } else {
+                                handleChange(field as string, text);
+                            }
+                        }}
+                        multiline={field === 'address'}
+                        keyboardType={isPhone ? 'numeric' : 'default'}
+                    />
+                ) : (
+                    <Text style={[styles.value, isLink && styles.link, { color: subTextColor }]}>
+                        {formData[field]}
+                    </Text>
+                )}
+            </View>
+        );
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
@@ -255,22 +275,14 @@ export default function MyAccount() {
                         </View>
                     </TouchableOpacity>
 
-                    {isEditing ? (
-                        <TextInput
-                            style={[styles.nameInput, { color: textColor, borderColor: inputBorderColor }]}
-                            value={formData.name}
-                            onChangeText={(text) => handleChange('name', text)}
-                            placeholder="Name"
-                            placeholderTextColor={subTextColor}
-                        />
-                    ) : (
-                        <Text style={[styles.nameText, { color: textColor }]}>{formData.name}</Text>
-                    )}
+                    {/* Always display Text, remove TextInput for name under avatar */}
+                    <Text style={[styles.nameText, { color: textColor }]}>{formData.name}</Text>
                 </View>
 
                 {/* Info Card */}
                 <View style={[styles.card, { backgroundColor: cardBg }]}>
-                    {renderField('Username', 'username')}
+                    {/* Bind to 'name' instead of 'username' */}
+                    {renderField('Username', 'name')}
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                     <View style={styles.row}>
@@ -281,7 +293,7 @@ export default function MyAccount() {
                             <Text style={[styles.ratingText, { color: textColor }]}>
                                 {ratingSummary.average ? ratingSummary.average.toFixed(1) : formData.rating}
                                 {/* Hiển thị số lượng đánh giá */}
-                                <Text style={{fontSize: 12, fontWeight: 'normal', color: subTextColor}}> ({ratingSummary.count} reviews)</Text>
+                                <Text style={{ fontSize: 12, fontWeight: 'normal', color: subTextColor }}> ({ratingSummary.count} reviews)</Text>
                             </Text>
                         </View>
                     </View>
@@ -299,7 +311,7 @@ export default function MyAccount() {
                 {/* --- PHẦN DANH SÁCH ĐÁNH GIÁ (Mới thêm) --- */}
                 <View style={[styles.reviewsContainer, { backgroundColor: cardBg }]}>
                     <Text style={[styles.sectionTitle, { color: textColor }]}>Reviews ({reviews.length})</Text>
-                    
+
                     {loadingReviews ? (
                         <ActivityIndicator size="small" color="#60A5FA" style={{ marginVertical: 20 }} />
                     ) : reviews.length === 0 ? (
