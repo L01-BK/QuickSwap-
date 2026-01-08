@@ -73,6 +73,7 @@ export default function Login() {
                         dispatch(setHomeActiveTab('profile'));
                         dispatch(navigateTo('my-account'));
                     } else {
+                        dispatch(setHomeActiveTab('home'));
                         dispatch(navigateTo('home'));
                     }
                 } else {

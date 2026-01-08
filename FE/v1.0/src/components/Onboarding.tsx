@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Animated, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const slides = [
     {
@@ -85,9 +86,24 @@ import { navigateTo } from '../store/reducer/navigationSlice';
 export default function Onboarding() {
     const dispatch = useDispatch();
 
-    const onFinish = () => dispatch(navigateTo('login'));
-    const onLogin = () => dispatch(navigateTo('login'));
-    const onRegister = () => dispatch(navigateTo('register'));
+    // const onFinish = () => dispatch(navigateTo('login'));
+    // const onLogin = () => dispatch(navigateTo('login'));
+    // const onRegister = () => dispatch(navigateTo('register'));
+
+    const completeOnboarding = async (targetScreen: 'login' | 'register') => {
+        try {
+            // Lưu key 'hasSeenOnboarding' vào bộ nhớ
+            await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+            // Sau đó mới điều hướng
+            dispatch(navigateTo(targetScreen));
+        } catch (error) {
+            console.log('Lỗi khi lưu trạng thái onboarding:', error);
+            dispatch(navigateTo(targetScreen));
+        }
+    };
+    const onFinish = () => completeOnboarding('login');
+    const onLogin = () => completeOnboarding('login');
+    const onRegister = () => completeOnboarding('register');
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
@@ -109,9 +125,7 @@ export default function Onboarding() {
         }
     };
 
-    const skip = () => {
-        onFinish();
-    }
+    const skip = () => completeOnboarding('login');
 
     return (
         <View style={styles.container}>

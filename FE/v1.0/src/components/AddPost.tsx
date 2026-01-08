@@ -124,6 +124,46 @@ export default function AddPost() {
         }
     };
 
+    const uploadFileToServer = async (localUri: string) => {
+        const formData = new FormData();
+        const filename = localUri.split('/').pop();
+
+        const fileObj = {
+            uri: localUri,
+            name: filename || `image_${Date.now()}.jpg`,
+            type: 'image/jpeg',
+        };
+
+        // Quan trọng: Tên field là 'file' để khớp với @RequestParam("file") trong Java
+        // @ts-ignore
+        formData.append('file', fileObj);
+
+        try {
+            console.log("Đang upload:", localUri);
+            const response = await fetch(`${BASE_URL}/api/upload/image`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+                body: formData,
+            });
+
+            const data = await handleApiError(response);
+            
+            if (data && data.url) {
+                console.log("✅ Upload thành công! Link ảnh:", data.url);
+                return data.url;
+            } else {
+                throw new Error("Server không trả về URL ảnh");
+            }
+
+        } catch (error) {
+            console.error("Upload thất bại:", error);
+            throw error;
+        }
+    };
+
     const handleConfirmPost = async () => {
     if (!title.trim()) {
         Alert.alert("Thiếu thông tin", "Vui lòng nhập tiêu đề bài đăng.");
@@ -141,21 +181,32 @@ export default function AddPost() {
     setIsSubmitting(true);
     await Sentry.startSpan({ name: "Create_New_Post", op: "http.client" }, async (span) => {
     try {
+        const finalImageUrls: string[] = [];
+            
+            for (const localUri of images) {
+                try {
+                    const serverUrl = await uploadFileToServer(localUri);
+                    finalImageUrls.push(serverUrl);
+                } catch (uploadError) {
+                    Alert.alert("Lỗi Upload", "Không thể tải ảnh lên server. Vui lòng thử lại.");
+                    setIsSubmitting(false);
+                    return; // Dừng lại ngay nếu có 1 ảnh lỗi
+                }
+            }
         const postPayload = {
-            title: title.trim(),
-            content: content.trim(),
-            price: 0,
-            
-            category: convertCategoryToEnum(category), 
-            
-            conditionPercent: `${condition}%`, 
-            isbnOrAuthor: author.trim(),
-            subjectCode: subject.trim(),
-            faculty: department.trim(),
-            
-            imageUrls: images, 
-            tags: ['Trao đổi', category]
-        };
+                title: title.trim(),
+                content: content.trim(),
+                price: 0,
+                category: convertCategoryToEnum(category),
+                conditionPercent: `${condition}%`,
+                isbnOrAuthor: author.trim(),
+                subjectCode: subject.trim(),
+                faculty: department.trim(),
+                
+                imageUrls: finalImageUrls, // Dùng mảng URL đã upload thành công
+                
+                tags: ['Trao đổi', category]
+            };
 
         const response = await fetch(`${BASE_URL}/api/posts`, {
             method: 'POST',

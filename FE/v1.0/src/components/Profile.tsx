@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { toggleTheme } from '../store/reducer/themeSlice';
-import { navigateTo, setHomeActiveTab, setOtpContext, setResetEmail } from '../store/reducer/navigationSlice';
+import { navigateTo, setHomeActiveTab, setOtpContext, setResetEmail, resetNavigation } from '../store/reducer/navigationSlice';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { forgotPassword } from '../services/authService';
 
@@ -44,6 +44,7 @@ export default function Profile() {
     };
 
     const handleLogout = () => {
+        dispatch(resetNavigation());
         dispatch(navigateTo('login'));
     };
 
