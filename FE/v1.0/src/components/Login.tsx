@@ -9,6 +9,7 @@ import { navigateTo } from '../store/reducer/navigationSlice';
 import { updateUser } from '../store/reducer/userSlice';
 import { BASE_URL, handleApiError } from '../utils/api';
 
+import * as Sentry from '@sentry/react-native';
 
 export default function Login() {
     const dispatch = useDispatch();
@@ -49,31 +50,36 @@ export default function Login() {
         }
 
         if (isValid) {
+        // Sử dụng startSpan để đo lường hiệu suất
+        await Sentry.startSpan({ name: "Login_Process", op: "http.client" }, async () => {
             try {
                 const response = await fetch(`${BASE_URL}/api/auth/login`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email,
-                        password,
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
                 });
 
                 const data = await handleApiError(response);
 
                 if (data.token && data.user) {
+                    Sentry.setUser({ id: data.user.id, email: data.user.email });
+                    // Thêm tag để dễ lọc trong báo cáo
+                    Sentry.setTag("login_status", "success"); 
+                    
                     dispatch(updateUser({ ...data.user, token: data.token }));
                     dispatch(navigateTo('home'));
                 } else {
+                    Sentry.setTag("login_status", "failed_invalid_data");
                     Alert.alert("Đăng nhập thất bại", "Phản hồi không hợp lệ từ máy chủ");
                 }
 
             } catch (error: any) {
+                Sentry.setTag("login_status", "error");
+                Sentry.captureException(error); // Bắt lỗi thực tế nếu crash hoặc lỗi mạng
                 console.log('Login Error:', error);
                 Alert.alert("Đăng nhập thất bại", "Tài khoản hoặc mật khẩu không chính xác");
             }
+        });
         }
     };
 

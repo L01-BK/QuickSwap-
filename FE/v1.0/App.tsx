@@ -29,6 +29,31 @@ import AboutApp from './src/components/AboutApp';
 import { useSelector } from 'react-redux';
 import { RootState } from './src/store';
 import { navigateTo, selectPost } from './src/store/reducer/navigationSlice';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://a17f8771274c12695b323c33331a3eeb@o4510670371553280.ingest.us.sentry.io/4510670372667392',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  tracesSampleRate: 1.0, // Ghi lại 100% các giao dịch hiệu suất (giảm xuống 0.1 khi prod)
+  _experiments: {
+    profilesSampleRate: 1.0, // Theo dõi mức độ sử dụng CPU
+  },
+  
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 /* =======================
   MainContent
@@ -120,13 +145,13 @@ function MainContent() {
    App
 ======================= */
 
-export default function App() {
+export default Sentry.wrap(function App() {
   return (
     <Provider store={store}>
       <MainContent />
     </Provider>
   );
-}
+});
 
 /* =======================
    Styles
