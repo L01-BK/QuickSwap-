@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { navigateTo, setHomeActiveTab, MainTab } from '../store/reducer/navigationSlice';
+import { navigateTo, setHomeActiveTab, MainTab, setHomePosts, setHomePage, setHomeScrollOffset } from '../store/reducer/navigationSlice';
 import { updateUser } from '../store/reducer/userSlice';
 import { BASE_URL, handleApiError } from '../utils/api';
 
@@ -28,6 +28,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const { colors } = useThemeColors();
     const user = useSelector((state: RootState) => state.user);
     const activeTab = useSelector((state: RootState) => state.navigation.homeActiveTab);
+    const { homePosts, homePage, homeScrollOffset } = useSelector((state: RootState) => state.navigation);
 
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -102,16 +103,17 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         fetchSavedIds();
     }, [user.token, dispatch]);
 
-    const [allPosts, setAllPosts] = useState<Post[]>([]);
-    const [page, setPage] = useState(0);
+    const [allPosts, setAllPosts] = useState<Post[]>(homePosts);
+    const [page, setPage] = useState(homePage);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    const [sectionTitleY, setSectionTitleY] = useState(0);
 
     const fetchPosts = async (currentPage: number) => {
         if (!user.token || loading) return;
         setLoading(true);
         try {
-            const limit = 10;
+            const limit = 5;
             const response = await fetch(`${BASE_URL}/api/posts?page=${currentPage}&limit=${limit}`, {
                 headers: { 'Authorization': `Bearer ${user.token}` },
             });
@@ -138,9 +140,15 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
 
             if (currentPage === 0) {
                 setAllPosts(mappedPosts);
+                dispatch(setHomePosts(mappedPosts));
             } else {
-                setAllPosts(prev => [...prev, ...mappedPosts]);
+                setAllPosts(prev => {
+                    const newPosts = [...prev, ...mappedPosts];
+                    dispatch(setHomePosts(newPosts));
+                    return newPosts;
+                });
             }
+
         } catch (error) {
             console.error('Failed to fetch posts:', error);
         } finally {
@@ -216,9 +224,14 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
 
     useEffect(() => {
         if (activeTab === 'home') {
-            setPage(0);
-            setHasMore(true);
-            fetchPosts(0);
+            if (homePosts.length === 0) {
+                setPage(0);
+                setHasMore(true);
+                fetchPosts(0);
+            } else {
+                setAllPosts(homePosts);
+                setPage(homePage);
+            }
         }
     }, [user.token, activeTab]);
     if (viewingUser) {
@@ -232,15 +245,19 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     }
 
     const loadMorePosts = () => {
-        if (!loading && hasMore) {
+        if (loading || allPosts.length === 0) return;
+
+        if (hasMore) {
             const nextPage = page + 1;
             setPage(nextPage);
+            dispatch(setHomePage(nextPage));
             fetchPosts(nextPage);
         }
     };
 
     const addNewPost = (newPost: any) => {
         setAllPosts(prev => [newPost, ...prev]);
+        dispatch(setHomePosts([newPost, ...allPosts]));
         dispatch(setHomeActiveTab('home'));
     };
 
@@ -272,7 +289,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         }
     };
 
-    const renderPostItem = ({ item }: { item: Post }) => (
+    const renderPostItem = useCallback(({ item }: { item: Post }) => (
         <TouchableOpacity
             style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => onPostClick(item)}
@@ -312,7 +329,9 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
-    );
+    ), [colors, bookmarkedIds]);
+
+
 
     const renderScrollableHeader = () => (
         <View>
@@ -325,9 +344,17 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                     <Image source={{ uri: 'https://via.placeholder.com/350x150' }} style={styles.bannerImage} resizeMode="cover" />
                 </View>
             </View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Bài đăng mới</Text>
+            <Text
+                style={[styles.sectionTitle, { color: colors.text }]}
+                onLayout={(event) => setSectionTitleY(event.nativeEvent.layout.y)}
+            >
+                Bài đăng mới
+            </Text>
         </View>
     );
+
+    const flatListRef = React.useRef<FlatList>(null);
+    // Removed scroll persistence logic as requested
 
     const renderContent = () => {
         switch (activeTab) {
@@ -360,23 +387,24 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                             </TouchableOpacity>
                         </View>
 
-                        <View style={{ flex: 1 }}>
-                            <FlatList
-                                contentContainerStyle={{ paddingHorizontal: 20 }}
-                                data={allPosts}
-                                keyExtractor={(item) => item.id.toString()}
-                                renderItem={renderPostItem}
-                                ListHeaderComponent={renderScrollableHeader}
-                                ListFooterComponent={
-                                    <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
-                                        {loading && <ActivityIndicator size="large" color={colors.primary} />}
-                                    </View>
-                                }
-                                onEndReached={loadMorePosts}
-                                onEndReachedThreshold={0.5}
-                                showsVerticalScrollIndicator={false}
-                            />
-                        </View>
+                        
+                    <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                        <FlatList
+                            ref={flatListRef}
+                            data={allPosts}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={renderPostItem}
+                            ListHeaderComponent={renderScrollableHeader()}
+                            ListFooterComponent={
+                                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                                    {loading && <ActivityIndicator size="large" color={colors.primary} />}
+                                </View>
+                            }
+                            onEndReached={loadMorePosts}
+                            onEndReachedThreshold={0.01}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    </View>
                     </View>
                 );
         }

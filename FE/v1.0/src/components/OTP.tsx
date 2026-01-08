@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { navigateTo, setResetOtp } from '../store/reducer/navigationSlice';
+import { navigateTo, setResetOtp, setHomeActiveTab } from '../store/reducer/navigationSlice';
 import { checkOtp } from '../services/authService';
 import { ActivityIndicator } from 'react-native';
 
@@ -32,6 +32,9 @@ export default function OTP() {
     const onBack = () => {
         if (otpContext === 'register') {
             dispatch(navigateTo('register'));
+        } else if (otpContext === 'profile-change-password') {
+            dispatch(setHomeActiveTab('profile'));
+            dispatch(navigateTo('home'));
         } else {
             dispatch(navigateTo('forgot-password'));
         }
@@ -67,7 +70,7 @@ export default function OTP() {
         }
         setOtpError('');
 
-        if (otpContext === 'forgot-password') {
+        if (otpContext === 'forgot-password' || otpContext === 'profile-change-password') {
             try {
                 setLoading(true);
                 const otpString = otp.join('');

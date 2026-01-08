@@ -16,7 +16,7 @@ export type Screen =
     | 'help-support'
     | 'about-app';
 
-export type OtpContext = 'register' | 'forgot-password';
+export type OtpContext = 'register' | 'forgot-password' | 'profile-change-password';
 export type MainTab = 'home' | 'grid' | 'add' | 'bookmark' | 'profile';
 
 interface NavigationState {
@@ -26,6 +26,9 @@ interface NavigationState {
     homeActiveTab: MainTab;
     resetEmail?: string;
     resetOtp?: string;
+    homePosts: Post[];
+    homePage: number;
+    homeScrollOffset: number;
 }
 
 const initialState: NavigationState = {
@@ -35,6 +38,9 @@ const initialState: NavigationState = {
     homeActiveTab: 'home',
     resetEmail: '',
     resetOtp: '',
+    homePosts: [],
+    homePage: 0,
+    homeScrollOffset: 0,
 };
 
 const navigationSlice = createSlice({
@@ -59,9 +65,18 @@ const navigationSlice = createSlice({
         setResetOtp: (state, action: PayloadAction<string>) => {
             state.resetOtp = action.payload;
         },
+        setHomePosts: (state, action: PayloadAction<Post[]>) => {
+            state.homePosts = action.payload;
+        },
+        setHomePage: (state, action: PayloadAction<number>) => {
+            state.homePage = action.payload;
+        },
+        setHomeScrollOffset: (state, action: PayloadAction<number>) => {
+            state.homeScrollOffset = action.payload;
+        },
         resetNavigation: () => initialState,
     },
 });
 
-export const { navigateTo, setOtpContext, selectPost, setHomeActiveTab, resetNavigation, setResetEmail, setResetOtp } = navigationSlice.actions;
+export const { navigateTo, setOtpContext, selectPost, setHomeActiveTab, resetNavigation, setResetEmail, setResetOtp, setHomePosts, setHomePage, setHomeScrollOffset } = navigationSlice.actions;
 export default navigationSlice.reducer;

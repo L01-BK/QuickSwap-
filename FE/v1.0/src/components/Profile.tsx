@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { toggleTheme } from '../store/reducer/themeSlice';
-import { navigateTo, setHomeActiveTab } from '../store/reducer/navigationSlice';
+import { navigateTo, setHomeActiveTab, setOtpContext, setResetEmail } from '../store/reducer/navigationSlice';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { forgotPassword } from '../services/authService';
 
 export default function Profile() {
     const dispatch = useDispatch();
@@ -27,6 +28,19 @@ export default function Profile() {
 
     const handleAboutAppClick = () => {
         dispatch(navigateTo('about-app'));
+    };
+    const handleNewPassword = () => {
+        if (user.email) {
+            // Optimistic navigation
+            console.log("Sending OTP to:", user.email);
+            forgotPassword(user.email).catch(err => console.error("OTP send error:", err));
+
+            dispatch(setResetEmail(user.email));
+            dispatch(setOtpContext('profile-change-password'));
+            dispatch(navigateTo('otp'));
+        } else {
+            alert("Không tìm thấy email của bạn. Vui lòng cập nhật email trong phần My Account.");
+        }
     };
 
     const handleLogout = () => {
@@ -66,8 +80,8 @@ export default function Profile() {
                             <Ionicons name="person-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>My Account</Text>
-                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Make changes to your account</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Tài khoản của tôi</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Thay đổi thông tin tài khoản</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
@@ -78,8 +92,8 @@ export default function Profile() {
                             <Ionicons name="moon-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>Night</Text>
-                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Manage your light mode</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Chế độ ban đêm</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Quản lý chế độ ban đêm</Text>
                         </View>
                         <Switch
                             trackColor={{ false: "#E0E0E0", true: "#81b0ff" }}
@@ -96,8 +110,8 @@ export default function Profile() {
                             <Ionicons name="notifications-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>Notification</Text>
-                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Manage your notification</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Thông báo</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Quản lý thông báo</Text>
                         </View>
                         <Switch
                             trackColor={{ false: "#E0E0E0", true: "#81b0ff" }}
@@ -109,13 +123,13 @@ export default function Profile() {
                     </View>
 
                     {/* New Password */}
-                    <TouchableOpacity style={styles.row}>
+                    <TouchableOpacity style={styles.row} onPress={handleNewPassword}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
                             <Ionicons name="checkmark-circle-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>New Password</Text>
-                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Change your password</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Đổi mật khẩu</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Đổi sang mật khẩu mới</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
@@ -126,15 +140,15 @@ export default function Profile() {
                             <Ionicons name="log-out-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>Log out</Text>
-                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Further secure your account for safety</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Đăng xuất</Text>
+                            <Text style={[styles.rowSubtitle, { color: colors.subText }]}>Đăng xuất khỏi tài khoản</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Section: More */}
-                <Text style={[styles.sectionHeader, { color: colors.text }]}>More</Text>
+                <Text style={[styles.sectionHeader, { color: colors.text }]}>Thêm</Text>
 
                 <View style={[styles.sectionContainer, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                     {/* Help & Support */}
@@ -143,7 +157,7 @@ export default function Profile() {
                             <Ionicons name="help-circle-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>Help & Support</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Hỗ trợ</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>
@@ -154,7 +168,7 @@ export default function Profile() {
                             <Ionicons name="heart-outline" size={22} color={colors.text} />
                         </View>
                         <View style={styles.rowContent}>
-                            <Text style={[styles.rowTitle, { color: colors.text }]}>About App</Text>
+                            <Text style={[styles.rowTitle, { color: colors.text }]}>Về chúng tôi</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.subText} />
                     </TouchableOpacity>

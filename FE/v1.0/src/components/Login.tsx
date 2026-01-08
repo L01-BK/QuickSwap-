@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 
 import { useDispatch } from 'react-redux';
-import { navigateTo } from '../store/reducer/navigationSlice';
+import { navigateTo, setHomeActiveTab } from '../store/reducer/navigationSlice';
 import { updateUser } from '../store/reducer/userSlice';
 import { BASE_URL, handleApiError } from '../utils/api';
 
@@ -67,7 +67,14 @@ export default function Login() {
                     Sentry.setTag("login_status", "success"); 
                     
                     dispatch(updateUser({ ...data.user, token: data.token }));
-                    dispatch(navigateTo('home'));
+
+                    const { name, username, phone, university, address } = data.user;
+                    if (!name || !username || !phone || !university || !address) {
+                        dispatch(setHomeActiveTab('profile'));
+                        dispatch(navigateTo('my-account'));
+                    } else {
+                        dispatch(navigateTo('home'));
+                    }
                 } else {
                     Sentry.setTag("login_status", "failed_invalid_data");
                     Alert.alert("Đăng nhập thất bại", "Phản hồi không hợp lệ từ máy chủ");
