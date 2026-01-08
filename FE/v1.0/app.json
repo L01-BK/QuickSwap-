@@ -17,7 +17,7 @@
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
-      "package": "com.l01bk.quickswap",
+      "package": "hcmut.l01",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -42,8 +42,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "42cfe76d-f2fd-4ce3-8849-0c2ed34336dc"
+        "projectId": "918526cc-9c72-4f93-90ec-ba4e324e8460"
       }
-    }
+    },
+    "owner": "hieuhv9110"
   }
 }
