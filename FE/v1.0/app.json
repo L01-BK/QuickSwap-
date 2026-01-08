@@ -25,7 +25,8 @@
       },
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.davincentius.QuickSwap"
     },
     "web": {
       "favicon": "./assets/favicon.png"
