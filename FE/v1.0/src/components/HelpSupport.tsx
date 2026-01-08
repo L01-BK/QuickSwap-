@@ -10,7 +10,7 @@ export default function HelpSupport() {
     const { colors } = useThemeColors();
 
     const handleBack = () => {
-        dispatch(navigateTo('profile'));
+        dispatch(navigateTo('home'));
     };
 
     return (

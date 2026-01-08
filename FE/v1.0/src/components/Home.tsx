@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert, AlertButton } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert, AlertButton, Dimensions, RefreshControl} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,6 +24,26 @@ interface HomeProps {
 }
 
 export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
+    const BANNER_DATA = [
+    { id: '1', image: require('../../assets/images/banner-1.jpg') },
+    { id: '2', image: require('../../assets/images/banner-2.jpg') },
+    { id: '3', image: require('../../assets/images/banner-3.jpg') },
+    ];
+
+    const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+    const bannerRef = React.useRef<FlatList>(null);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (activeBannerIndex < BANNER_DATA.length - 1) {
+                bannerRef.current?.scrollToIndex({ index: activeBannerIndex + 1, animated: true });
+            } else {
+                bannerRef.current?.scrollToIndex({ index: 0, animated: true });
+            }
+        }, 4000);
+        return () => clearInterval(timer);
+    }, [activeBannerIndex]);
+
     const dispatch = useDispatch();
     const { colors } = useThemeColors();
     const user = useSelector((state: RootState) => state.user);
@@ -107,8 +127,19 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
     const [page, setPage] = useState(homePage);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [sectionTitleY, setSectionTitleY] = useState(0);
-
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        setHasMore(true);
+        setPage(0);
+        dispatch(setHomePage(0));
+        
+        // Gọi trực tiếp fetchPosts với page 0
+        await fetchPosts(0);
+        
+        setRefreshing(false);
+    }, [user.token]);
     const fetchPosts = async (currentPage: number) => {
         if (!user.token || loading) return;
         setLoading(true);
@@ -224,25 +255,17 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
 
     useEffect(() => {
         if (activeTab === 'home') {
-            if (homePosts.length === 0) {
+            // if (homePosts.length === 0) {
                 setPage(0);
                 setHasMore(true);
                 fetchPosts(0);
-            } else {
-                setAllPosts(homePosts);
-                setPage(homePage);
-            }
+            // } else {
+            //     setAllPosts(homePosts);
+            //     setPage(homePage);
+            // }
         }
     }, [user.token, activeTab]);
-    if (viewingUser) {
-        return (
-            <UserProfile 
-                userId={viewingUser.id} 
-                initialName={viewingUser.name}
-                onBack={() => setViewingUser(null)}
-            />
-        );
-    }
+    
 
     const loadMorePosts = () => {
         if (loading || allPosts.length === 0) return;
@@ -339,11 +362,38 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 <Text style={[styles.greetingText, { color: colors.subText }]}>Chào mừng quay trở lại,</Text>
                 <Text style={[styles.userNameText, { color: colors.text }]}>{user.name || user.username}.</Text>
             </View>
-            <View style={styles.bannerContainer}>
-                <View style={styles.bannerPlaceholder}>
-                    <Image source={{ uri: 'https://via.placeholder.com/350x150' }} style={styles.bannerImage} resizeMode="cover" />
-                </View>
+            <View style={styles.bannerWrapper}>
+            <FlatList
+                ref={bannerRef}
+                data={BANNER_DATA}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                onMomentumScrollEnd={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 40));
+                    setActiveBannerIndex(index);
+                }}
+                renderItem={({ item }) => (
+                    <View style={styles.bannerSlide}>
+                        {/* Bỏ { uri: ... } đi vì item.image giờ đã là kết quả của require */}
+                        <Image source={item.image} style={styles.bannerImage} resizeMode="cover" />
+                    </View>
+                )}
+            />
+            {/* Chấm tròn chỉ báo (Pagination Dots) */}
+            <View style={styles.paginationContainer}>
+                {BANNER_DATA.map((_, index) => (
+                    <View 
+                        key={index} 
+                        style={[
+                            styles.dot, 
+                            { backgroundColor: index === activeBannerIndex ? '#60A5FA' : 'rgba(255,255,255,0.5)' }
+                        ]} 
+                    />
+                ))}
             </View>
+        </View>
             <Text
                 style={[styles.sectionTitle, { color: colors.text }]}
                 onLayout={(event) => setSectionTitleY(event.nativeEvent.layout.y)}
@@ -400,6 +450,14 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                                     {loading && <ActivityIndicator size="large" color={colors.primary} />}
                                 </View>
                             }
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={onRefresh}
+                                    colors={[colors.primary]} // Android
+                                    tintColor={colors.primary} // iOS
+                                />
+                            }
                             onEndReached={loadMorePosts}
                             onEndReachedThreshold={0.01}
                             showsVerticalScrollIndicator={false}
@@ -409,7 +467,15 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
                 );
         }
     };
-
+    if (viewingUser) {
+        return (
+            <UserProfile 
+                userId={viewingUser.id} 
+                initialName={viewingUser.name}
+                onBack={() => setViewingUser(null)}
+            />
+        );
+    }
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             {renderContent()}
@@ -486,7 +552,7 @@ export default function Home({ onPostClick, onNotificationClick }: HomeProps) {
         </SafeAreaView>
     );
 }
-
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
@@ -498,7 +564,6 @@ const styles = StyleSheet.create({
     userNameText: { fontSize: 24, fontWeight: 'bold' },
     bannerContainer: { marginBottom: 25, borderRadius: 12, overflow: 'hidden' },
     bannerPlaceholder: { width: '100%', height: 180, backgroundColor: '#FFE4B5', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    bannerImage: { width: '100%', height: '100%' },
     sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15 },
     postCard: { borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 20 },
     postHeader: { marginBottom: 10 },
@@ -520,4 +585,32 @@ const styles = StyleSheet.create({
     tabItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 7 },
     activeTab: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 10 },
     activeText: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 6 },
+    bannerWrapper: {
+        marginBottom: 25,
+        borderRadius: 12,
+        overflow: 'hidden',
+        height: 180,
+        position: 'relative',
+    },
+    bannerSlide: {
+        width: SCREEN_WIDTH - 40, // Trừ đi paddingHorizontal của FlatList mẹ
+        height: 180,
+    },
+    bannerImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 12,
+    },
+    paginationContainer: {
+        position: 'absolute',
+        bottom: 10,
+        flexDirection: 'row',
+        alignSelf: 'center',
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginHorizontal: 4,
+    },
 });

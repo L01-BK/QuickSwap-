@@ -29,7 +29,6 @@ const convertCategoryToEnum = (uiCategory: string) => {
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
@@ -92,7 +91,7 @@ export default function AddPost() {
             return;
         }
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'], 
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
@@ -221,7 +220,29 @@ export default function AddPost() {
         setSubject('');
         setDepartment('');
     };
+    const takePhoto = async () => {
+        if (images.length >= 4) {
+            Alert.alert("Thông báo", "Bạn chỉ được đăng tối đa 4 ảnh.");
+            return;
+        }
 
+        // Yêu cầu quyền truy cập Camera
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert("Lỗi", "Cần cấp quyền truy cập camera để chụp ảnh.");
+            return;
+        }
+
+        let result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setImages([...images, result.assets[0].uri]);
+        }
+    };
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -233,7 +254,9 @@ export default function AddPost() {
                     <View>
                         <Text style={[styles.userName, { color: colors.text }]}>{user.name || 'Người dùng'}</Text>
                         <View style={styles.ratingRow}>
-                            <Text style={[styles.ratingText, { color: colors.subText }]}>4,5</Text>
+                            <Text style={[styles.ratingText, { color: colors.subText }]}>
+                                {user.rating ? user.rating.toFixed(1) : '0.0'}
+                            </Text>
                             <Ionicons name="star" size={14} color="#FFD700" />
                         </View>
                     </View>
@@ -269,12 +292,27 @@ export default function AddPost() {
 
                 {/* Image Picker */}
                 <View style={styles.imagePickerRow}>
-                    <TouchableOpacity style={styles.addPhotoCircle} onPress={pickImage}>
+                    <TouchableOpacity 
+                        style={styles.addPhotoCircle} 
+                        onPress={() => {
+                            Alert.alert(
+                                "Thêm hình ảnh",
+                                "Chọn nguồn ảnh bạn muốn",
+                                [
+                                    { text: "Chụp ảnh mới", onPress: takePhoto },
+                                    { text: "Chọn từ thư viện", onPress: pickImage },
+                                    { text: "Hủy", style: "cancel" }
+                                ]
+                            );
+                        }}
+                    >
                         <View style={styles.blueCircle}>
-                            <Ionicons name="image" size={24} color="#fff" />
+                            {/* Đổi icon thành camera để rõ nghĩa hơn hoặc giữ nguyên */}
+                            <Ionicons name="camera" size={24} color="#fff" />
                         </View>
                         <Text style={[styles.photoCount, { color: colors.text }]}>{images.length}/4</Text>
                     </TouchableOpacity>
+                    
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {images.map((uri, index) => (
                             <View key={index} style={[styles.imagePlaceholder, { borderColor: colors.border }]}>

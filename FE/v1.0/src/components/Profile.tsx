@@ -105,7 +105,7 @@ export default function Profile() {
                     </View>
 
                     {/* Notification */}
-                    <View style={styles.row}>
+                    {/* <View style={styles.row}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.iconBg }]}>
                             <Ionicons name="notifications-outline" size={22} color={colors.text} />
                         </View>
@@ -120,7 +120,7 @@ export default function Profile() {
                             onValueChange={toggleNotification}
                             value={isNotificationEnabled}
                         />
-                    </View>
+                    </View> */}
 
                     {/* New Password */}
                     <TouchableOpacity style={styles.row} onPress={handleNewPassword}>
